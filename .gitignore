@@ -5,6 +5,12 @@ build-*/
 *.pro.user
 *.qmake.stash
 
+# Qt user files
+*.user
+*.pro.user
+*.qmake.stash
+*.autosave
+
 # CMake
 CMakeFiles/
 CMakeCache.txt
