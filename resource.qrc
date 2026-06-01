@@ -1,0 +1,32 @@
+<RCC>
+    <qresource prefix="/pictures">
+        <file>resources/pictures/backpack.png</file>
+        <file>resources/pictures/bed.png</file>
+        <file>resources/pictures/brute.png</file>
+        <file>resources/pictures/background.png</file>
+        <file>resources/pictures/brutal-helm.png</file>
+        <file>resources/pictures/barbute.png</file>
+        <file>resources/pictures/burning-embers.png</file>
+        <file>resources/pictures/bully-minion.png</file>
+        <file>resources/pictures/campfire.png</file>
+        <file>resources/pictures/camping-tent.png</file>
+        <file>resources/pictures/circle-64.png</file>
+        <file>resources/pictures/crowned-skull.png</file>
+        <file>resources/pictures/daemon-skull.png</file>
+        <file>resources/pictures/chest.png</file>
+        <file>resources/pictures/Circle.png</file>
+        <file>resources/pictures/death-zone.png</file>
+        <file>resources/pictures/dread-skull.png</file>
+        <file>resources/pictures/empty-circle.png</file>
+        <file>resources/pictures/flame.png</file>
+        <file>resources/pictures/fireplace.png</file>
+        <file>resources/pictures/forest-camp.png</file>
+        <file>resources/pictures/executioner-hood.png</file>
+        <file>resources/pictures/heavy-helm.png</file>
+        <file>resources/pictures/horned-helm.png</file>
+        <file>resources/pictures/letter-bomb.png</file>
+        <file>resources/pictures/locked-chest.png</file>
+        <file>resources/pictures/hydra.png</file>
+        <file>resources/pictures/ink-swirl.png</file>
+    </qresource>
+</RCC>
