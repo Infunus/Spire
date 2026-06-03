@@ -22,7 +22,7 @@ class ArcHandWidget : public QWidget
 
 public:
     explicit ArcHandWidget(QWidget *parent = nullptr);
-    void setCards(const QStringList &cards);
+    void setCards(const QList<Card> &cards);
     void setCardEnabled(int cardIndex, bool enabled);
     void setSelectedCard(int cardIndex);
 
@@ -61,7 +61,7 @@ class EnemyCardWidget : public QWidget
 
 public:
     explicit EnemyCardWidget(const QString &name, int hp, QWidget *parent = nullptr);
-    void setEnemy(const QString &name, int maxHp);
+    void setEnemy(const QString &name, int maxHp, const QString &description = QString());
     void setCardImage(const QString &imagePath);
     void setHp(int hp);
     void setIntent(const QString &intent);
@@ -126,6 +126,7 @@ private:
     EnemyCardWidget *m_enemyCard;
     QWidget *m_enemyField;
     EnergyWidget *m_energyWidget;
+    QLabel *m_strengthLabel;
     ArcHandWidget *m_handWidget;
     QPushButton *m_confirmCardButton;
     QPushButton *m_endTurnButton;
@@ -136,6 +137,7 @@ private:
     int m_playerHp;
     int m_playerMaxHp;
     int m_playerBlock;
+    int m_playerStrength;
     int m_energy;
     int m_maxEnergy;
     int m_turnNumber;

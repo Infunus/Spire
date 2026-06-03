@@ -6,6 +6,7 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
 #include <QLayoutItem>
 #include <QPixmap>
@@ -22,18 +23,26 @@ ArcHandWidget::ArcHandWidget(QWidget *parent)
     setAttribute(Qt::WA_StyledBackground, true);
 }
 
-void ArcHandWidget::setCards(const QStringList &cards)
+void ArcHandWidget::setCards(const QList<Card> &cards)
 {
     qDeleteAll(m_cardButtons);
     m_cardButtons.clear();
     m_selectedCardIndex = -1;
 
     for (int i = 0; i < cards.size(); ++i) {
-        const QString &cardText = cards.at(i);
-        QPushButton *button = new QPushButton(cardText, this);
+        const Card card = cards.at(i);
+        QPushButton *button = new QPushButton(card.buttonText(), this);
         button->setMinimumSize(118, 150);
         button->setMaximumSize(158, 184);
         button->setCursor(Qt::PointingHandCursor);
+        button->setToolTip(card.name() + QStringLiteral("\n") + card.description());
+        if (!card.imagePath().isEmpty()) {
+            const QPixmap cardImage(card.imagePath());
+            if (!cardImage.isNull()) {
+                button->setIcon(QIcon(cardImage));
+                button->setIconSize(QSize(64, 52));
+            }
+        }
         button->setStyleSheet(
             "QPushButton {"
             "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
@@ -289,11 +298,12 @@ EnemyCardWidget::EnemyCardWidget(const QString &name, int hp, QWidget *parent)
     setIntent(GameText::Battle::pendingIntent());
 }
 
-void EnemyCardWidget::setEnemy(const QString &name, int maxHp)
+void EnemyCardWidget::setEnemy(const QString &name, int maxHp, const QString &description)
 {
     m_nameLabel->setText(name);
     m_maxHp = maxHp;
     m_hpBar->setRange(0, m_maxHp);
+    setToolTip(description);
     m_imageLabel->clear();
     m_imageLabel->setText(name);
     setHp(maxHp);
@@ -382,13 +392,15 @@ BattleWidget::BattleWidget(QWidget *parent)
       m_enemyCard(nullptr),
       m_enemyField(nullptr),
       m_energyWidget(nullptr),
+      m_strengthLabel(nullptr),
       m_handWidget(nullptr),
       m_confirmCardButton(nullptr),
       m_endTurnButton(nullptr),
-      m_enemy(Enemy::createGaoshuHomework()),
+      m_enemy(Enemy::createCampusCultist()),
       m_playerHp(70),
       m_playerMaxHp(70),
       m_playerBlock(0),
+      m_playerStrength(0),
       m_energy(3),
       m_maxEnergy(3),
       m_turnNumber(1),
@@ -533,6 +545,17 @@ QWidget *BattleWidget::createArenaPanel()
 
     m_energyWidget = new EnergyWidget(rightControlPanel);
     rightLayout->addStretch();
+    m_strengthLabel = new QLabel(rightControlPanel);
+    m_strengthLabel->setAlignment(Qt::AlignCenter);
+    m_strengthLabel->setStyleSheet(
+        "background: rgba(72, 25, 23, 145);"
+        "border: 1px solid rgba(255, 211, 138, 145);"
+        "border-radius: 12px;"
+        "color: #ffe4a3;"
+        "font-size: 13px;"
+        "font-weight: 800;"
+        "padding: 5px 8px;");
+    rightLayout->addWidget(m_strengthLabel, 0, Qt::AlignCenter);
     QLabel *energyLabel = new QLabel(GameText::Battle::energyLabel(), rightControlPanel);
     energyLabel->setAlignment(Qt::AlignCenter);
     energyLabel->setStyleSheet("color: rgba(247, 234, 208, 175); font-size: 13px; font-weight: 800;");
@@ -634,6 +657,7 @@ void BattleWidget::startBattle()
     m_hand.setDeck(m_cardLibrary);
     m_enemy = createEnemyForBattle();
     m_playerBlock = 0;
+    m_playerStrength = 0;
     m_energy = m_maxEnergy;
     m_turnNumber = 0;
     m_selectedCardIndex = -1;
@@ -642,7 +666,7 @@ void BattleWidget::startBattle()
 
     setBossBattle(m_battleNumber >= 4);
     if (m_enemyCard) {
-        m_enemyCard->setEnemy(m_enemy.name(), m_enemy.maxHp());
+        m_enemyCard->setEnemy(m_enemy.name(), m_enemy.maxHp(), m_enemy.description());
     }
     if (m_arenaTitleLabel) {
         m_arenaTitleLabel->setText(GameText::Battle::battleTitleFormat()
@@ -672,7 +696,11 @@ void BattleWidget::drawCards(int count)
 
 void BattleWidget::updateHandView()
 {
-    m_handWidget->setCards(m_hand.buttonTexts());
+    QList<Card> cards;
+    for (int i = 0; i < m_hand.size(); ++i) {
+        cards << m_hand.cardAt(i);
+    }
+    m_handWidget->setCards(cards);
     m_selectedCardIndex = -1;
     refreshHandButtons();
     refreshActionButtons();
@@ -746,6 +774,11 @@ void BattleWidget::refreshUi()
 
     if (m_energyWidget) {
         m_energyWidget->setEnergy(m_energy, m_maxEnergy);
+    }
+
+    if (m_strengthLabel) {
+        m_strengthLabel->setText(GameText::Battle::strengthLabelFormat().arg(m_playerStrength));
+        m_strengthLabel->setVisible(m_playerStrength > 0);
     }
 
     refreshHandButtons();
@@ -830,19 +863,37 @@ bool BattleWidget::checkBattleEnd()
 
 QList<Card> BattleWidget::createDefaultCards() const
 {
-    const Card attack(GameText::CardText::attackName(), 1, 6, 0, 0, 0, GameText::CardText::attackDescription());
-    const Card defend(GameText::CardText::defendName(), 1, 0, 5, 0, 0, GameText::CardText::defendDescription());
-    const Card night(GameText::CardText::nightName(), 1, 10, 0, 0, 2, GameText::CardText::nightDescription());
+    const Card strike(GameText::CardText::strikeName(), 1, 6, 0, 0, 0,
+                      GameText::CardText::strikeDescription(), 0, 0, 0, 0, 1,
+                      GameText::CardText::strikeImage());
+    const Card defend(GameText::CardText::defendName(), 1, 0, 5, 0, 0,
+                      GameText::CardText::defendDescription(), 0, 0, 0, 0, 1,
+                      GameText::CardText::defendImage());
 
     QList<Card> deck;
-    deck << attack << attack << attack << attack
+    deck << strike << strike << strike << strike
          << defend << defend << defend << defend
-         << night << night
-         << Card(GameText::CardText::healName(), 1, 0, 0, 5, 0, GameText::CardText::healDescription())
-         << Card(GameText::CardText::studyName(), 2, 15, 0, 0, 0, GameText::CardText::studyDescription())
-         << Card(GameText::CardText::assistantName(), 1, 3, 0, 0, 0, GameText::CardText::assistantDescription(), 2)
-         << Card(GameText::CardText::markName(), 1, 0, 4, 0, 0, GameText::CardText::markDescription(), 0, 2)
-         << Card(GameText::CardText::inspirationName(), 0, 0, 0, 0, 0, GameText::CardText::inspirationDescription(), 0, 0, 2);
+         << Card(GameText::CardText::bashName(), 2, 8, 0, 0, 0,
+                 GameText::CardText::bashDescription(), 0, 2, 0, 0, 1,
+                 GameText::CardText::bashImage())
+         << Card(GameText::CardText::inflameName(), 1, 0, 0, 0, 0,
+                 GameText::CardText::inflameDescription(), 0, 0, 0, 2, 1,
+                 GameText::CardText::inflameImage())
+         << Card(GameText::CardText::heavyBladeName(), 2, 14, 0, 0, 0,
+                 GameText::CardText::heavyBladeDescription(), 0, 0, 0, 0, 3,
+                 GameText::CardText::heavyBladeImage())
+         << Card(GameText::CardText::pommelName(), 1, 9, 0, 0, 0,
+                 GameText::CardText::pommelDescription(), 0, 0, 1, 0, 1,
+                 GameText::CardText::pommelImage())
+         << Card(GameText::CardText::shrugName(), 1, 0, 8, 0, 0,
+                 GameText::CardText::shrugDescription(), 0, 0, 1, 0, 1,
+                 GameText::CardText::shrugImage())
+         << Card(GameText::CardText::angerName(), 0, 4, 0, 0, 0,
+                 GameText::CardText::angerDescription(), 0, 0, 0, 0, 1,
+                 GameText::CardText::angerImage())
+         << Card(GameText::CardText::flexName(), 0, 0, 0, 0, 0,
+                 GameText::CardText::flexDescription(), 0, 0, 1, 3, 1,
+                 GameText::CardText::flexImage());
     return deck;
 }
 
@@ -852,14 +903,20 @@ Enemy BattleWidget::createEnemyForBattle() const
         return Enemy::createFinalExam();
     }
 
-    const int roll = QRandomGenerator::global()->bounded(3);
+    const int roll = QRandomGenerator::global()->bounded(4);
     if (roll == 0) {
-        return Enemy::createGaoshuHomework();
+        return Enemy::createCampusCultist();
     }
     if (roll == 1) {
-        return Enemy::createProgramProject();
+        return Enemy::createHomeworkWorm();
     }
-    return Enemy::createMidterm();
+    if (roll == 2) {
+        return Enemy::createDdlSlime();
+    }
+    if (roll == 3) {
+        return Enemy::createProjectNob();
+    }
+    return Enemy::createCampusCultist();
 }
 
 void BattleWidget::selectCard(int cardIndex)
@@ -893,8 +950,14 @@ void BattleWidget::confirmCard()
 
     m_energy -= card.cost();
 
+    if (card.strengthGain() > 0) {
+        m_playerStrength += card.strengthGain();
+    }
+
     if (card.damage() > 0) {
-        m_enemy.takeDamage(card.damage());
+        const int strengthBonus = m_playerStrength * qMax(1, card.strengthMultiplier());
+        const int realDamage = card.damage() + strengthBonus;
+        m_enemy.takeDamage(realDamage);
         playHitEffect(true);
     }
 

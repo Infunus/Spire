@@ -16,7 +16,9 @@ public:
           m_selfDamage(0),
           m_weak(0),
           m_vulnerable(0),
-          m_draw(0)
+          m_draw(0),
+          m_strengthGain(0),
+          m_strengthMultiplier(1)
     {
     }
 
@@ -29,7 +31,10 @@ public:
          const QString &description,
          int weak = 0,
          int vulnerable = 0,
-         int draw = 0)
+         int draw = 0,
+         int strengthGain = 0,
+         int strengthMultiplier = 1,
+         const QString &imagePath = QString())
         : m_name(name),
           m_cost(cost),
           m_damage(damage),
@@ -39,7 +44,10 @@ public:
           m_description(description),
           m_weak(weak),
           m_vulnerable(vulnerable),
-          m_draw(draw)
+          m_draw(draw),
+          m_strengthGain(strengthGain),
+          m_strengthMultiplier(strengthMultiplier),
+          m_imagePath(imagePath)
     {
     }
 
@@ -52,6 +60,9 @@ public:
     int weak() const { return m_weak; }
     int vulnerable() const { return m_vulnerable; }
     int draw() const { return m_draw; }
+    int strengthGain() const { return m_strengthGain; }
+    int strengthMultiplier() const { return m_strengthMultiplier; }
+    QString imagePath() const { return m_imagePath; }
     QString description() const { return m_description; }
 
     QString buttonText() const
@@ -73,6 +84,9 @@ private:
     int m_weak;
     int m_vulnerable;
     int m_draw;
+    int m_strengthGain;
+    int m_strengthMultiplier;
+    QString m_imagePath;
 };
 
 #endif // CARD_H

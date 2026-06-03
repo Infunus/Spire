@@ -67,7 +67,7 @@ inline QString enemyAreaTitle() { return QStringLiteral("敌方单位区"); }
 inline QString portraitPlaceholder() { return QStringLiteral("立绘"); }
 inline QString enemyImagePlaceholder() { return QStringLiteral("敌人图"); }
 inline QString pendingIntent() { return QStringLiteral("意图待定"); }
-inline QString defaultEnemyName() { return QStringLiteral("高数作业"); }
+inline QString defaultEnemyName() { return QStringLiteral("绩点传教同学"); }
 inline QString defaultEnemyIntent() { return QStringLiteral("下回合攻击 6"); }
 inline QString battleTitleFormat() { return QStringLiteral("第 %1 战 · %2"); }
 inline QString restartButton() { return QStringLiteral("重新开始"); }
@@ -76,6 +76,7 @@ inline QString runClearTitle() { return QStringLiteral("通关 · 总评 A"); }
 inline QString battleWinFormat() { return QStringLiteral("胜利 · 击败 %1 个敌人"); }
 inline QString battleFailTitle() { return QStringLiteral("修读失败 · 需要重开"); }
 inline QString hpFormat() { return QStringLiteral("HP %1/%2"); }
+inline QString strengthLabelFormat() { return QStringLiteral("攻击强度 +%1"); }
 }
 
 namespace EnemyText
@@ -83,39 +84,71 @@ namespace EnemyText
 inline QString attackIntentFormat() { return QStringLiteral("攻击 %1"); }
 inline QString healIntentFormat() { return QStringLiteral("回复 %1 HP"); }
 inline QString buffIntentFormat() { return QStringLiteral("卷起来，攻击 +%1"); }
+inline QString blockIntentFormat() { return QStringLiteral("获得 %1 格挡"); }
 inline QString attackAndBuffIntentFormat() { return QStringLiteral("攻击 %1，攻击 +%2"); }
+inline QString attackAndBlockIntentFormat() { return QStringLiteral("攻击 %1，获得 %2 格挡"); }
 inline QString weakStatusFormat() { return QStringLiteral("虚弱%1"); }
 inline QString vulnerableStatusFormat() { return QStringLiteral("易伤%1"); }
 inline QString strengthStatusFormat() { return QStringLiteral("强度+%1"); }
+inline QString blockStatusFormat() { return QStringLiteral("格挡%1"); }
 inline QString statusSeparator() { return QStringLiteral(" | "); }
 inline QString statusJoiner() { return QStringLiteral(" "); }
 
-inline QString gaoshuHomeworkName() { return QStringLiteral("高数作业"); }
-inline QString programProjectName() { return QStringLiteral("程设大作业"); }
-inline QString midtermName() { return QStringLiteral("期中考试"); }
+inline QString campusCultistName() { return QStringLiteral("绩点传教同学"); }
+inline QString campusCultistDescription() { return QStringLiteral("先给自己打鸡血，之后连续攻击。"); }
+inline QString homeworkWormName() { return QStringLiteral("高数题面虫"); }
+inline QString homeworkWormDescription() { return QStringLiteral("会一边进攻一边堆格挡，适合作为普通敌人的压力测试。"); }
+inline QString ddlSlimeName() { return QStringLiteral("DDL 史莱姆"); }
+inline QString ddlSlimeDescription() { return QStringLiteral("低血量普通敌人，会在攻击间隙获得格挡。"); }
+inline QString projectNobName() { return QStringLiteral("程设大作业精英"); }
+inline QString projectNobDescription() { return QStringLiteral("精英敌人，攻击会越拖越痛。"); }
 inline QString finalExamName() { return QStringLiteral("期末考试"); }
+inline QString finalExamDescription() { return QStringLiteral("最终 Boss，攻击、格挡和强化都会出现。"); }
+
+// 图片路径接口：以后把资源放进 resources/ 后，在这里返回路径即可，例如 QStringLiteral("resources/cards/strike.png")。
+inline QString campusCultistImage() { return QString(); }
+inline QString homeworkWormImage() { return QString(); }
+inline QString ddlSlimeImage() { return QString(); }
+inline QString projectNobImage() { return QString(); }
+inline QString finalExamImage() { return QString(); }
 }
 
 namespace CardText
 {
 inline QString buttonTextFormat() { return QStringLiteral("%1\n费用 %2\n%3"); }
 
-inline QString attackName() { return QStringLiteral("卷"); }
-inline QString attackDescription() { return QStringLiteral("造成 6 点伤害"); }
+inline QString strikeName() { return QStringLiteral("刷题"); }
+inline QString strikeDescription() { return QStringLiteral("造成 6 点伤害"); }
 inline QString defendName() { return QStringLiteral("防破防"); }
 inline QString defendDescription() { return QStringLiteral("获得 5 点格挡"); }
-inline QString nightName() { return QStringLiteral("熬夜"); }
-inline QString nightDescription() { return QStringLiteral("造成 10 点伤害\n失去 2 HP"); }
-inline QString healName() { return QStringLiteral("摸鱼回血"); }
-inline QString healDescription() { return QStringLiteral("回复 5 HP"); }
-inline QString studyName() { return QStringLiteral("通宵复习"); }
-inline QString studyDescription() { return QStringLiteral("造成 15 点伤害"); }
-inline QString assistantName() { return QStringLiteral("请教助教"); }
-inline QString assistantDescription() { return QStringLiteral("造成 3 点伤害\n给予 2 层虚弱"); }
-inline QString markName() { return QStringLiteral("划重点"); }
-inline QString markDescription() { return QStringLiteral("获得 4 格挡\n给予 2 层易伤"); }
-inline QString inspirationName() { return QStringLiteral("灵感闪现"); }
-inline QString inspirationDescription() { return QStringLiteral("抽 2 张牌"); }
+inline QString bashName() { return QStringLiteral("当堂点名"); }
+inline QString bashDescription() { return QStringLiteral("造成 8 点伤害\n给予 2 层易伤"); }
+inline QString inflameName() { return QStringLiteral("鸡血动员"); }
+inline QString inflameDescription() { return QStringLiteral("本场战斗攻击强度 +2"); }
+inline QString heavyBladeName() { return QStringLiteral("大题重击"); }
+inline QString heavyBladeDescription() { return QStringLiteral("造成 14 点伤害\n攻击强度加成按 3 倍计算"); }
+inline QString pommelName() { return QStringLiteral("边写边想"); }
+inline QString pommelDescription() { return QStringLiteral("造成 9 点伤害\n抽 1 张牌"); }
+inline QString shrugName() { return QStringLiteral("缓口气"); }
+inline QString shrugDescription() { return QStringLiteral("获得 8 点格挡\n抽 1 张牌"); }
+inline QString angerName() { return QStringLiteral("灵感速写"); }
+inline QString angerDescription() { return QStringLiteral("造成 4 点伤害\n费用为 0"); }
+inline QString flexName() { return QStringLiteral("临时鸡血"); }
+inline QString flexDescription() { return QStringLiteral("本场战斗攻击强度 +3\n抽 1 张牌"); }
+inline QString cleaveName() { return QStringLiteral("知识点横扫"); }
+inline QString cleaveDescription() { return QStringLiteral("造成 8 点伤害"); }
+
+// 卡牌图片路径接口：名称和描述在上面改，图片在这里改。
+inline QString strikeImage() { return QString(); }
+inline QString defendImage() { return QString(); }
+inline QString bashImage() { return QString(); }
+inline QString inflameImage() { return QString(); }
+inline QString heavyBladeImage() { return QString(); }
+inline QString pommelImage() { return QString(); }
+inline QString shrugImage() { return QString(); }
+inline QString angerImage() { return QString(); }
+inline QString flexImage() { return QString(); }
+inline QString cleaveImage() { return QString(); }
 }
 
 namespace DebugText
