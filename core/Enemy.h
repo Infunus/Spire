@@ -1,6 +1,8 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 
+#include "GameText.h"
+
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -79,29 +81,30 @@ public:
         const EnemyAction action = currentAction();
         QString text;
         if (action.type == EnemyActionAttack) {
-            text = QStringLiteral("攻击 %1").arg(effectiveAttackDamage(action.amount));
+            text = GameText::EnemyText::attackIntentFormat().arg(effectiveAttackDamage(action.amount));
         } else if (action.type == EnemyActionHeal) {
-            text = QStringLiteral("回复 %1 HP").arg(action.amount);
+            text = GameText::EnemyText::healIntentFormat().arg(action.amount);
         } else if (action.type == EnemyActionBuff) {
-            text = QStringLiteral("卷起来，攻击 +%1").arg(action.amount);
+            text = GameText::EnemyText::buffIntentFormat().arg(action.amount);
         } else {
-            text = QStringLiteral("攻击 %1，攻击 +%2")
+            text = GameText::EnemyText::attackAndBuffIntentFormat()
                        .arg(effectiveAttackDamage(action.amount))
                        .arg(action.extra);
         }
 
         QStringList states;
         if (m_weakStacks > 0) {
-            states << QStringLiteral("虚弱%1").arg(m_weakStacks);
+            states << GameText::EnemyText::weakStatusFormat().arg(m_weakStacks);
         }
         if (m_vulnerableStacks > 0) {
-            states << QStringLiteral("易伤%1").arg(m_vulnerableStacks);
+            states << GameText::EnemyText::vulnerableStatusFormat().arg(m_vulnerableStacks);
         }
         if (m_strength > 0) {
-            states << QStringLiteral("强度+%1").arg(m_strength);
+            states << GameText::EnemyText::strengthStatusFormat().arg(m_strength);
         }
         if (!states.isEmpty()) {
-            text += QStringLiteral(" | ") + states.join(QStringLiteral(" "));
+            text += GameText::EnemyText::statusSeparator()
+                    + states.join(GameText::EnemyText::statusJoiner());
         }
         return text;
     }
@@ -176,7 +179,7 @@ public:
         actions << EnemyAction(EnemyActionAttack, 6)
                 << EnemyAction(EnemyActionHeal, 4)
                 << EnemyAction(EnemyActionAttack, 8);
-        return Enemy(QStringLiteral("高数作业"), 42, QString(), actions);
+        return Enemy(GameText::EnemyText::gaoshuHomeworkName(), 42, QString(), actions);
     }
 
     static Enemy createProgramProject()
@@ -185,7 +188,7 @@ public:
         actions << EnemyAction(EnemyActionBuff, 2)
                 << EnemyAction(EnemyActionAttack, 8)
                 << EnemyAction(EnemyActionAttackAndBuff, 10, 1);
-        return Enemy(QStringLiteral("程设大作业"), 56, QString(), actions);
+        return Enemy(GameText::EnemyText::programProjectName(), 56, QString(), actions);
     }
 
     static Enemy createMidterm()
@@ -194,7 +197,7 @@ public:
         actions << EnemyAction(EnemyActionAttack, 10)
                 << EnemyAction(EnemyActionAttack, 6)
                 << EnemyAction(EnemyActionHeal, 5);
-        return Enemy(QStringLiteral("期中考试"), 64, QString(), actions);
+        return Enemy(GameText::EnemyText::midtermName(), 64, QString(), actions);
     }
 
     static Enemy createFinalExam()
@@ -204,7 +207,7 @@ public:
                 << EnemyAction(EnemyActionBuff, 3)
                 << EnemyAction(EnemyActionAttack, 18)
                 << EnemyAction(EnemyActionHeal, 8);
-        return Enemy(QStringLiteral("期末考试"), 96, QString(), actions);
+        return Enemy(GameText::EnemyText::finalExamName(), 96, QString(), actions);
     }
 
 private:

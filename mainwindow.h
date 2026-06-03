@@ -2,6 +2,12 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QString>
+
+class BattleWidget;
+class EventWidget;
+class QStackedWidget;
+class QWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -18,6 +24,18 @@ public:
     ~MainWindow();
 
 private:
+    QWidget *createMenuPage();
+    QWidget *createBattlePage();
+    QWidget *createEventPreviewPage();
+    void showBattlePage();
+    void showEventPreviewPage();
+    QString assetPath(const QString &relativePath) const;
+
     Ui::MainWindow *ui;
+    QStackedWidget *m_pages;
+    QWidget *m_battlePage;
+    QWidget *m_eventPage;
+    BattleWidget *m_battleWidget;
+    EventWidget *m_eventWidget;
 };
 #endif // MAINWINDOW_H

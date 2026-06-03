@@ -1,4 +1,5 @@
 #include "BattleWidget.h"
+#include "../core/GameText.h"
 
 #include <QAbstractAnimation>
 #include <QPropertyAnimation>
@@ -155,7 +156,7 @@ PortraitWidget::PortraitWidget(const QString &name, QWidget *parent)
 
     m_portraitLabel->setObjectName("PortraitLabel");
     m_portraitLabel->setAlignment(Qt::AlignCenter);
-    m_portraitLabel->setText(QStringLiteral("立绘"));
+    m_portraitLabel->setText(GameText::Battle::portraitPlaceholder());
     m_portraitLabel->setFixedSize(168, 168);
 
     m_nameLabel->setObjectName("HeroNameLabel");
@@ -261,7 +262,7 @@ EnemyCardWidget::EnemyCardWidget(const QString &name, int hp, QWidget *parent)
 
     m_imageLabel->setObjectName("EnemyImageLabel");
     m_imageLabel->setAlignment(Qt::AlignCenter);
-    m_imageLabel->setText(QStringLiteral("敌人图"));
+    m_imageLabel->setText(GameText::Battle::enemyImagePlaceholder());
     m_imageLabel->setFixedSize(132, 88);
 
     m_nameLabel->setObjectName("EnemyNameLabel");
@@ -285,7 +286,7 @@ EnemyCardWidget::EnemyCardWidget(const QString &name, int hp, QWidget *parent)
     layout->addWidget(m_intentLabel);
     layout->addWidget(m_hpBar);
     setHp(hp);
-    setIntent(QStringLiteral("意图待定"));
+    setIntent(GameText::Battle::pendingIntent());
 }
 
 void EnemyCardWidget::setEnemy(const QString &name, int maxHp)
@@ -314,7 +315,7 @@ void EnemyCardWidget::setCardImage(const QString &imagePath)
 void EnemyCardWidget::setHp(int hp)
 {
     m_hpBar->setValue(hp);
-    m_hpBar->setFormat(QStringLiteral("HP %1/%2").arg(hp).arg(m_maxHp));
+    m_hpBar->setFormat(GameText::Battle::hpFormat().arg(hp).arg(m_maxHp));
 }
 
 void EnemyCardWidget::setIntent(const QString &intent)
@@ -479,9 +480,9 @@ QWidget *BattleWidget::createArenaPanel()
         "font-weight: 800;"
         "padding: 6px 18px;");
 
-    m_bossPortrait = new PortraitWidget(QStringLiteral("Boss"), panel);
+    m_bossPortrait = new PortraitWidget(GameText::Battle::bossName(), panel);
     m_enemyField = createEnemyField(panel);
-    m_playerPortrait = new PortraitWidget(QStringLiteral("玩家"), panel);
+    m_playerPortrait = new PortraitWidget(GameText::Battle::playerName(), panel);
 
     QWidget *leftInfoPanel = new QWidget(panel);
     leftInfoPanel->setMinimumWidth(118);
@@ -493,7 +494,7 @@ QWidget *BattleWidget::createArenaPanel()
     leftLayout->setContentsMargins(10, 12, 10, 12);
     leftLayout->setSpacing(9);
 
-    QLabel *leftTitleLabel = new QLabel(QStringLiteral("燕园加成"), leftInfoPanel);
+    QLabel *leftTitleLabel = new QLabel(GameText::Battle::relicTitle(), leftInfoPanel);
     leftTitleLabel->setAlignment(Qt::AlignCenter);
     leftTitleLabel->setStyleSheet("color: rgba(247, 234, 208, 165); font-size: 13px; font-weight: 800;");
     leftLayout->addWidget(leftTitleLabel);
@@ -520,19 +521,19 @@ QWidget *BattleWidget::createArenaPanel()
     rightLayout->setSpacing(10);
     rightLayout->addStretch();
 
-    m_confirmCardButton = new QPushButton(QStringLiteral("确认出牌"), rightControlPanel);
+    m_confirmCardButton = new QPushButton(GameText::Battle::confirmCardButton(), rightControlPanel);
     m_confirmCardButton->setObjectName("ConfirmCardButton");
     m_confirmCardButton->setFixedSize(112, 50);
     rightLayout->addWidget(m_confirmCardButton, 0, Qt::AlignCenter);
 
-    m_endTurnButton = new QPushButton(QStringLiteral("结束回合"), rightControlPanel);
+    m_endTurnButton = new QPushButton(GameText::Battle::endTurnButton(), rightControlPanel);
     m_endTurnButton->setObjectName("EndTurnButton");
     m_endTurnButton->setFixedSize(112, 50);
     rightLayout->addWidget(m_endTurnButton, 0, Qt::AlignCenter);
 
     m_energyWidget = new EnergyWidget(rightControlPanel);
     rightLayout->addStretch();
-    QLabel *energyLabel = new QLabel(QStringLiteral("精力"), rightControlPanel);
+    QLabel *energyLabel = new QLabel(GameText::Battle::energyLabel(), rightControlPanel);
     energyLabel->setAlignment(Qt::AlignCenter);
     energyLabel->setStyleSheet("color: rgba(247, 234, 208, 175); font-size: 13px; font-weight: 800;");
     rightLayout->addWidget(energyLabel);
@@ -563,7 +564,7 @@ QWidget *BattleWidget::createEnemyField(QWidget *parent)
     layout->setContentsMargins(20, 10, 20, 18);
     layout->setSpacing(8);
 
-    QLabel *titleLabel = new QLabel(QStringLiteral("敌方单位区"), field);
+    QLabel *titleLabel = new QLabel(GameText::Battle::enemyAreaTitle(), field);
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setStyleSheet("color: rgba(247, 234, 208, 155); font-size: 15px; font-weight: 800;");
 
@@ -573,8 +574,8 @@ QWidget *BattleWidget::createEnemyField(QWidget *parent)
     cardLayout->setSpacing(22);
     cardLayout->addStretch();
 
-    m_enemyCard = new EnemyCardWidget(QStringLiteral("高数作业"), 40, cardRow);
-    m_enemyCard->setIntent(QStringLiteral("下回合攻击 6"));
+    m_enemyCard = new EnemyCardWidget(GameText::Battle::defaultEnemyName(), 40, cardRow);
+    m_enemyCard->setIntent(GameText::Battle::defaultEnemyIntent());
 
     cardLayout->addWidget(m_enemyCard);
     cardLayout->addStretch();
@@ -600,7 +601,7 @@ void BattleWidget::setBossBattle(bool isBossBattle)
 
 void BattleWidget::setupInitialDemoText()
 {
-    m_arenaTitleLabel->setText(QStringLiteral("卷王博雅塔"));
+    m_arenaTitleLabel->setText(GameText::App::title());
     startRun();
 }
 
@@ -632,7 +633,7 @@ void BattleWidget::startBattle()
         m_enemyCard->setEnemy(m_enemy.name(), m_enemy.maxHp());
     }
     if (m_arenaTitleLabel) {
-        m_arenaTitleLabel->setText(QStringLiteral("第 %1 战 · %2")
+        m_arenaTitleLabel->setText(GameText::Battle::battleTitleFormat()
                                       .arg(m_battleNumber)
                                       .arg(m_enemy.name()));
     }
@@ -686,13 +687,13 @@ void BattleWidget::refreshActionButtons()
         if (m_battleEnded) {
             m_endTurnButton->setEnabled(true);
             if (m_playerHp <= 0 || m_runFinished) {
-                m_endTurnButton->setText(QStringLiteral("重新开始"));
+                m_endTurnButton->setText(GameText::Battle::restartButton());
             } else {
-                m_endTurnButton->setText(QStringLiteral("下一场"));
+                m_endTurnButton->setText(GameText::Battle::nextBattleButton());
             }
         } else {
             m_endTurnButton->setEnabled(canAct);
-            m_endTurnButton->setText(QStringLiteral("结束回合"));
+            m_endTurnButton->setText(GameText::Battle::endTurnButton());
         }
         const bool endTurnEnabled = m_endTurnButton->isEnabled();
         m_endTurnButton->setStyleSheet(endTurnEnabled
@@ -786,12 +787,12 @@ bool BattleWidget::checkBattleEnd()
         if (m_battleNumber >= 4) {
             m_runFinished = true;
             if (m_arenaTitleLabel) {
-                m_arenaTitleLabel->setText(QStringLiteral("通关 · 总评 A"));
+                m_arenaTitleLabel->setText(GameText::Battle::runClearTitle());
             }
         } else {
             ++m_battleNumber;
             if (m_arenaTitleLabel) {
-                m_arenaTitleLabel->setText(QStringLiteral("胜利 · 击败 %1 个敌人").arg(m_enemiesDefeated));
+                m_arenaTitleLabel->setText(GameText::Battle::battleWinFormat().arg(m_enemiesDefeated));
             }
         }
         refreshUi();
@@ -806,7 +807,7 @@ bool BattleWidget::checkBattleEnd()
         m_hand.discardHand();
         updateHandView();
         if (m_arenaTitleLabel) {
-            m_arenaTitleLabel->setText(QStringLiteral("修读失败 · 需要重开"));
+            m_arenaTitleLabel->setText(GameText::Battle::battleFailTitle());
         }
         refreshUi();
         return true;
@@ -817,19 +818,19 @@ bool BattleWidget::checkBattleEnd()
 
 QList<Card> BattleWidget::createDefaultCards() const
 {
-    const Card attack(QStringLiteral("卷"), 1, 6, 0, 0, 0, QStringLiteral("造成 6 点伤害"));
-    const Card defend(QStringLiteral("防破防"), 1, 0, 5, 0, 0, QStringLiteral("获得 5 点格挡"));
-    const Card night(QStringLiteral("熬夜"), 1, 10, 0, 0, 2, QStringLiteral("造成 10 点伤害\n失去 2 HP"));
+    const Card attack(GameText::CardText::attackName(), 1, 6, 0, 0, 0, GameText::CardText::attackDescription());
+    const Card defend(GameText::CardText::defendName(), 1, 0, 5, 0, 0, GameText::CardText::defendDescription());
+    const Card night(GameText::CardText::nightName(), 1, 10, 0, 0, 2, GameText::CardText::nightDescription());
 
     QList<Card> deck;
     deck << attack << attack << attack << attack
          << defend << defend << defend << defend
          << night << night
-         << Card(QStringLiteral("摸鱼回血"), 1, 0, 0, 5, 0, QStringLiteral("回复 5 HP"))
-         << Card(QStringLiteral("通宵复习"), 2, 15, 0, 0, 0, QStringLiteral("造成 15 点伤害"))
-         << Card(QStringLiteral("请教助教"), 1, 3, 0, 0, 0, QStringLiteral("造成 3 点伤害\n给予 2 层虚弱"), 2)
-         << Card(QStringLiteral("划重点"), 1, 0, 4, 0, 0, QStringLiteral("获得 4 格挡\n给予 2 层易伤"), 0, 2)
-         << Card(QStringLiteral("灵感闪现"), 0, 0, 0, 0, 0, QStringLiteral("抽 2 张牌"), 0, 0, 2);
+         << Card(GameText::CardText::healName(), 1, 0, 0, 5, 0, GameText::CardText::healDescription())
+         << Card(GameText::CardText::studyName(), 2, 15, 0, 0, 0, GameText::CardText::studyDescription())
+         << Card(GameText::CardText::assistantName(), 1, 3, 0, 0, 0, GameText::CardText::assistantDescription(), 2)
+         << Card(GameText::CardText::markName(), 1, 0, 4, 0, 0, GameText::CardText::markDescription(), 0, 2)
+         << Card(GameText::CardText::inspirationName(), 0, 0, 0, 0, 0, GameText::CardText::inspirationDescription(), 0, 0, 2);
     return deck;
 }
 

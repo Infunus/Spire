@@ -1,6 +1,8 @@
 #ifndef CARD_H
 #define CARD_H
 
+#include "GameText.h"
+
 #include <QString>
 
 class Card
@@ -54,7 +56,7 @@ public:
 
     QString buttonText() const
     {
-        return QStringLiteral("%1\n费用 %2\n%3")
+        return GameText::CardText::buttonTextFormat()
             .arg(m_name)
             .arg(m_cost)
             .arg(m_description);
