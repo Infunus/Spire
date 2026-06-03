@@ -25,16 +25,20 @@ public:
 
 private:
     QWidget *createMenuPage();
-    QWidget *createBattlePage();
+    QWidget *createBattlePage(bool bossBattle = false);
     QWidget *createEventPreviewPage();
+    QWidget *createDebugPlaceholderPage(const QString &title, const QString &body);
     void showBattlePage();
+    void showBossBattlePage();
     void showEventPreviewPage();
+    void showDebugPlaceholderPage(const QString &title, const QString &body);
     QString assetPath(const QString &relativePath) const;
 
     Ui::MainWindow *ui;
     QStackedWidget *m_pages;
     QWidget *m_battlePage;
     QWidget *m_eventPage;
+    QWidget *m_debugPage;
     BattleWidget *m_battleWidget;
     EventWidget *m_eventWidget;
 };

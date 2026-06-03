@@ -25,6 +25,15 @@ inline QString startButton() { return QStringLiteral("开始修读"); }
 inline QString eventPreviewButton() { return QStringLiteral("事件预览"); }
 inline QString quitButton() { return QStringLiteral("退出游戏"); }
 inline QString backToMenuButton() { return QStringLiteral("主界面"); }
+
+inline QString debugTitle() { return QStringLiteral("开发调试入口"); }
+inline QString debugBattleButton() { return QStringLiteral("普通战斗"); }
+inline QString debugBossButton() { return QStringLiteral("Boss 战"); }
+inline QString debugEventButton() { return QStringLiteral("随机事件"); }
+inline QString debugMapButton() { return QStringLiteral("地图节点"); }
+inline QString debugRewardButton() { return QStringLiteral("卡牌奖励"); }
+inline QString debugShopButton() { return QStringLiteral("商店"); }
+inline QString debugRestButton() { return QStringLiteral("休息点"); }
 }
 
 namespace EventText
@@ -107,6 +116,18 @@ inline QString markName() { return QStringLiteral("划重点"); }
 inline QString markDescription() { return QStringLiteral("获得 4 格挡\n给予 2 层易伤"); }
 inline QString inspirationName() { return QStringLiteral("灵感闪现"); }
 inline QString inspirationDescription() { return QStringLiteral("抽 2 张牌"); }
+}
+
+namespace DebugText
+{
+inline QString mapTitle() { return QStringLiteral("地图节点"); }
+inline QString mapBody() { return QStringLiteral("地图 UI 尚未实现。这里先作为开发占位页，后续接入固定节点路线：战斗、事件、商店、休息、Boss。"); }
+inline QString rewardTitle() { return QStringLiteral("卡牌奖励"); }
+inline QString rewardBody() { return QStringLiteral("奖励 UI 尚未实现。后续这里展示三选一卡牌，并把选择结果加入牌组。"); }
+inline QString shopTitle() { return QStringLiteral("商店"); }
+inline QString shopBody() { return QStringLiteral("商店 UI 尚未实现。后续这里展示可购买卡牌、遗物和删牌入口。"); }
+inline QString restTitle() { return QStringLiteral("休息点"); }
+inline QString restBody() { return QStringLiteral("休息 UI 尚未实现。后续这里提供回血、升级卡牌等选项。"); }
 }
 }
 

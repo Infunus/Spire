@@ -599,6 +599,18 @@ void BattleWidget::setBossBattle(bool isBossBattle)
     m_enemyField->setMaximumHeight(420);
 }
 
+void BattleWidget::startDebugBattle(bool bossBattle)
+{
+    m_cardLibrary = createDefaultCards();
+    m_playerMaxHp = 70;
+    m_playerHp = m_playerMaxHp;
+    m_maxEnergy = 3;
+    m_battleNumber = bossBattle ? 4 : 1;
+    m_enemiesDefeated = bossBattle ? 3 : 0;
+    m_runFinished = false;
+    startBattle();
+}
+
 void BattleWidget::setupInitialDemoText()
 {
     m_arenaTitleLabel->setText(GameText::App::title());

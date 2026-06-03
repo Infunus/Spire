@@ -94,6 +94,7 @@ class BattleWidget : public QWidget
 public:
     explicit BattleWidget(QWidget *parent = nullptr);
     void setBossBattle(bool isBossBattle);
+    void startDebugBattle(bool bossBattle);
 
 private slots:
     void selectCard(int cardIndex);
