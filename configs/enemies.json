@@ -1,0 +1,16 @@
+{
+  "enemies": [
+    {
+      "id": "slime",
+      "name": "史莱姆",
+      "health": 20,
+      "attack": 6
+    },
+    {
+      "id": "cultist",
+      "name": "教徒",
+      "health": 22,
+      "attack": 8
+    }
+  ]
+}

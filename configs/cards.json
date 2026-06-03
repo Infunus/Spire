@@ -1,0 +1,18 @@
+{
+  "cards": [
+    {
+      "id": "strike_ironclad",
+      "name": "重击",
+      "type": "Attack",
+      "cost": 1,
+      "damage": 6
+    },
+    {
+      "id": "defend_ironclad",
+      "name": "防御",
+      "type": "Skill",
+      "cost": 1,
+      "block": 5
+    }
+  ]
+}

@@ -1,0 +1,205 @@
+#include "StatusBarWidget.h"
+
+#include <QFrame>
+#include <QGridLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPainter>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <algorithm>
+
+RelicIconWidget::RelicIconWidget(QWidget *parent)
+    : QWidget(parent)
+    , color(QColor(180, 170, 130))
+{
+    setFixedSize(30, 30);
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+}
+
+void RelicIconWidget::setIcon(const QPixmap &pixmap)
+{
+    icon = pixmap;
+    update();
+}
+
+void RelicIconWidget::setColor(const QColor &value)
+{
+    color = value;
+    update();
+}
+
+void RelicIconWidget::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event)
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    if (!icon.isNull()) {
+        QPixmap scaled = icon.scaled(size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        const QPoint offset((width() - scaled.width()) / 2, (height() - scaled.height()) / 2);
+        painter.drawPixmap(offset, scaled);
+        return;
+    }
+
+    painter.setPen(QPen(QColor(245, 235, 190), 2));
+    painter.setBrush(color);
+    painter.drawEllipse(rect().adjusted(3, 3, -3, -3));
+}
+
+StatusBarWidget::StatusBarWidget(QWidget *parent)
+    : QWidget(parent)
+    , healthLabel(nullptr)
+    , floorLabel(nullptr)
+    , characterLabel(nullptr)
+    , goldLabel(nullptr)
+    , potionsLabel(nullptr)
+    , mapButton(nullptr)
+    , deckButton(nullptr)
+    , settingsButton(nullptr)
+    , relicPanel(new QWidget(this))
+    , relicLayout(new QGridLayout(relicPanel))
+{
+    setFixedHeight(118);
+    setAutoFillBackground(false);
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(
+        "StatusBarWidget { background: rgba(12, 16, 22, 210); }"
+        "QLabel { color: #f5ead2; font-weight: 700; font-size: 16px; }"
+        "QPushButton { color: #f8edd4; border: 1px solid rgba(255,255,255,80);"
+        "              border-radius: 4px; padding: 7px 12px; font-weight: 700; }"
+        "QPushButton:hover { border-color: rgba(255,255,255,170); }");
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(this);
+    rootLayout->setContentsMargins(16, 10, 16, 8);
+    rootLayout->setSpacing(6);
+
+    QFrame *topFrame = new QFrame(this);
+    topFrame->setObjectName("topFrame");
+    topFrame->setStyleSheet(
+        "QFrame#topFrame { background: rgba(48, 38, 32, 230);"
+        "                   border: 1px solid rgba(255, 230, 180, 90);"
+        "                   border-radius: 6px; }");
+
+    QHBoxLayout *topLayout = new QHBoxLayout(topFrame);
+    topLayout->setContentsMargins(12, 8, 12, 8);
+    topLayout->setSpacing(12);
+
+    healthLabel = createStatusLabel(QStringLiteral("HP"), QStringLiteral("80/80"), QColor(190, 50, 48));
+    floorLabel = createStatusLabel(QString::fromUtf8("层数"), QStringLiteral("1"), QColor(80, 150, 220));
+    characterLabel = createStatusLabel(QString::fromUtf8("角色"), QString::fromUtf8("铁甲战士"), QColor(150, 90, 210));
+    goldLabel = createStatusLabel(QString::fromUtf8("金币"), QStringLiteral("99"), QColor(220, 175, 60));
+    potionsLabel = createStatusLabel(QString::fromUtf8("药水"), QStringLiteral("3"), QColor(70, 190, 160));
+
+    topLayout->addWidget(healthLabel);
+    topLayout->addWidget(floorLabel);
+    topLayout->addWidget(characterLabel);
+    topLayout->addWidget(goldLabel);
+    topLayout->addWidget(potionsLabel);
+    topLayout->addStretch();
+
+    mapButton = createToolButton(QString::fromUtf8("地图"), QColor(65, 120, 185));
+    deckButton = createToolButton(QString::fromUtf8("卡组"), QColor(110, 90, 185));
+    settingsButton = createToolButton(QString::fromUtf8("设置"), QColor(105, 110, 120));
+
+    topLayout->addWidget(mapButton);
+    topLayout->addWidget(deckButton);
+    topLayout->addWidget(settingsButton);
+
+    connect(mapButton, &QPushButton::clicked, this, &StatusBarWidget::mapButtonClicked);
+    connect(deckButton, &QPushButton::clicked, this, &StatusBarWidget::deckButtonClicked);
+    connect(settingsButton, &QPushButton::clicked, this, &StatusBarWidget::settingsButtonClicked);
+
+    relicPanel->setAttribute(Qt::WA_StyledBackground, true);
+    relicPanel->setStyleSheet("background: transparent;");
+    relicLayout->setContentsMargins(4, 0, 4, 0);
+    relicLayout->setHorizontalSpacing(5);
+    relicLayout->setVerticalSpacing(3);
+
+    rootLayout->addWidget(topFrame);
+    rootLayout->addWidget(relicPanel);
+
+    setRelicCount(18);
+}
+
+void StatusBarWidget::setHealth(int current, int maximum)
+{
+    healthLabel->setText(QStringLiteral("HP %1/%2").arg(current).arg(maximum));
+}
+
+void StatusBarWidget::setFloor(int floor)
+{
+    floorLabel->setText(QString::fromUtf8("层数 %1").arg(floor));
+}
+
+void StatusBarWidget::setCharacterName(const QString &name)
+{
+    characterLabel->setText(QString::fromUtf8("角色 %1").arg(name));
+}
+
+void StatusBarWidget::setGold(int gold)
+{
+    goldLabel->setText(QString::fromUtf8("金币 %1").arg(gold));
+}
+
+void StatusBarWidget::setPotions(int count)
+{
+    potionsLabel->setText(QString::fromUtf8("药水 %1").arg(count));
+}
+
+void StatusBarWidget::setRelicCount(int count)
+{
+    rebuildRelics(std::vector<QPixmap>(std::max(0, count)));
+}
+
+void StatusBarWidget::setRelicIcons(const std::vector<QPixmap> &icons)
+{
+    rebuildRelics(icons);
+}
+
+QLabel* StatusBarWidget::createStatusLabel(const QString &title, const QString &value, const QColor &color)
+{
+    QLabel *label = new QLabel(QStringLiteral("%1 %2").arg(title, value), this);
+    label->setMinimumWidth(98);
+    label->setStyleSheet(QStringLiteral(
+        "QLabel { color: #f5ead2; padding: 5px 9px 5px 28px;"
+        "         border-radius: 4px; background: rgba(0,0,0,55);"
+        "         border-left: 16px solid %1; }").arg(color.name()));
+    return label;
+}
+
+QPushButton* StatusBarWidget::createToolButton(const QString &text, const QColor &color)
+{
+    QPushButton *button = new QPushButton(text, this);
+    button->setMinimumWidth(74);
+    button->setStyleSheet(QStringLiteral(
+        "QPushButton { background: %1; }"
+        "QPushButton:hover { background: %2; }").arg(color.name(), color.lighter(118).name()));
+    return button;
+}
+
+void StatusBarWidget::rebuildRelics(const std::vector<QPixmap> &icons)
+{
+    while (QLayoutItem *item = relicLayout->takeAt(0)) {
+        if (QWidget *widget = item->widget()) {
+            widget->deleteLater();
+        }
+        delete item;
+    }
+
+    const QList<QColor> colors = {
+        QColor(185, 72, 58),
+        QColor(210, 155, 60),
+        QColor(92, 145, 205),
+        QColor(95, 175, 115),
+        QColor(150, 95, 195),
+    };
+
+    for (int i = 0; i < static_cast<int>(icons.size()); ++i) {
+        RelicIconWidget *relic = new RelicIconWidget(relicPanel);
+        relic->setIcon(icons[i]);
+        relic->setColor(colors[i % colors.size()]);
+        relicLayout->addWidget(relic, i / 15, i % 15, Qt::AlignLeft | Qt::AlignTop);
+    }
+}

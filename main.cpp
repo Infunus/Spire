@@ -1,5 +1,4 @@
-#include "mainwindow.h"
-#include "mapwidget.h"
+#include "src/views/MainWindow.h"
 
 #include <QApplication>
 
@@ -9,9 +8,6 @@ int main(int argc, char *argv[])
 
     MainWindow w;
     w.show();
-
-    MapWidget map;
-    map.show();
 
     return a.exec();
 }
