@@ -1,0 +1,342 @@
+#ifndef GAMESTATE_H
+#define GAMESTATE_H
+
+#include "CardLibrary.h"
+#include "GameBalance.h"
+#include "GameRandom.h"
+#include "Potion.h"
+#include "Relic.h"
+
+#include <QList>
+#include <QString>
+#include <QtGlobal>
+
+enum class MapNodeType
+{
+    None,
+    Battle,
+    Event,
+    Shop,
+    Rest,
+    Reward,
+    Boss
+};
+
+class GameState
+{
+public:
+    static GameState &instance()
+    {
+        static GameState state;
+        return state;
+    }
+
+    void resetForNewRun()
+    {
+        resetForNewRunWithSeed(GameRandom::instance().createRandomSeed());
+    }
+
+    void resetForNewRunWithSeed(quint32 seed)
+    {
+        m_maxHp = GameBalance::Player::startMaxHp();
+        m_hp = m_maxHp;
+        m_runSeed = seed == 0 ? 1 : seed;
+        GameRandom::instance().setSeed(m_runSeed);
+        m_gradeScore = 0;
+        m_credits = 0;
+        m_coins = GameBalance::Player::startCoins();
+        m_currentFloor = 0;
+        m_currentNodeType = MapNodeType::None;
+        m_defeatedEnemies = 0;
+        m_eventsFinished = 0;
+        m_bossDefeated = false;
+        m_ownedCards = CardLibrary::starterDeck();
+        m_relics.clear();
+        m_potions.clear();
+        addRelic(RelicLibrary::starterRelic());
+        addPotion(PotionLibrary::createCoffeeShot());
+        addPotion(PotionLibrary::createAntiBreakSpray());
+    }
+
+    int hp() const { return m_hp; }
+    int maxHp() const { return m_maxHp; }
+    int gradeScore() const { return m_gradeScore; }
+    int credits() const { return m_credits; }
+    int coins() const { return m_coins; }
+    quint32 runSeed() const { return m_runSeed; }
+    int currentFloor() const { return m_currentFloor; }
+    MapNodeType currentNodeType() const { return m_currentNodeType; }
+    int defeatedEnemies() const { return m_defeatedEnemies; }
+    int eventsFinished() const { return m_eventsFinished; }
+    bool bossDefeated() const { return m_bossDefeated; }
+    bool isDead() const { return m_hp <= 0; }
+
+    QList<Card> ownedCards() const { return m_ownedCards; }
+    QList<RelicData> relics() const { return m_relics; }
+    QList<PotionData> potions() const { return m_potions; }
+    int maxPotions() const { return GameBalance::Player::maxPotions(); }
+
+    void setMaxHp(int maxHp, bool healToFull = false)
+    {
+        m_maxHp = qMax(1, maxHp);
+        if (healToFull) {
+            m_hp = m_maxHp;
+        } else {
+            m_hp = qBound(0, m_hp, m_maxHp);
+        }
+    }
+
+    void setHp(int hp)
+    {
+        m_hp = qBound(0, hp, m_maxHp);
+    }
+
+    void heal(int amount)
+    {
+        if (amount > 0) {
+            setHp(m_hp + amount);
+        }
+    }
+
+    void loseHp(int amount)
+    {
+        if (amount > 0) {
+            setHp(m_hp - amount);
+        }
+    }
+
+    void addGradeScore(int amount)
+    {
+        m_gradeScore = qMax(0, m_gradeScore + amount);
+    }
+
+    void addCredits(int amount)
+    {
+        m_credits = qMax(0, m_credits + amount);
+    }
+
+    void addCoins(int amount)
+    {
+        m_coins = qMax(0, m_coins + amount);
+    }
+
+    bool spendCoins(int amount)
+    {
+        if (amount <= 0) {
+            return true;
+        }
+        if (m_coins < amount) {
+            return false;
+        }
+        m_coins -= amount;
+        return true;
+    }
+
+    void setCurrentNode(MapNodeType nodeType)
+    {
+        m_currentNodeType = nodeType;
+    }
+
+    void advanceFloor(MapNodeType nodeType)
+    {
+        ++m_currentFloor;
+        m_currentNodeType = nodeType;
+    }
+
+    void setOwnedCards(const QList<Card> &cards)
+    {
+        m_ownedCards = cards;
+    }
+
+    void addCard(const Card &card)
+    {
+        m_ownedCards.append(card);
+    }
+
+    bool removeCardAt(int index)
+    {
+        if (index < 0 || index >= m_ownedCards.size()) {
+            return false;
+        }
+        m_ownedCards.removeAt(index);
+        return true;
+    }
+
+    bool canUpgradeCardAt(int index) const
+    {
+        if (index < 0 || index >= m_ownedCards.size()) {
+            return false;
+        }
+        return CardLibrary::canUpgrade(m_ownedCards.at(index));
+    }
+
+    bool upgradeCardAt(int index)
+    {
+        if (!canUpgradeCardAt(index)) {
+            return false;
+        }
+        m_ownedCards[index] = CardLibrary::upgradedCard(m_ownedCards.at(index));
+        return true;
+    }
+
+    bool upgradeFirstCardByName(const QString &cardName)
+    {
+        for (int i = 0; i < m_ownedCards.size(); ++i) {
+            if (m_ownedCards.at(i).name() == cardName || m_ownedCards.at(i).displayName() == cardName) {
+                return upgradeCardAt(i);
+            }
+        }
+        return false;
+    }
+
+    bool upgradeFirstCardById(const QString &cardId)
+    {
+        for (int i = 0; i < m_ownedCards.size(); ++i) {
+            if (m_ownedCards.at(i).id() == cardId) {
+                return upgradeCardAt(i);
+            }
+        }
+        return false;
+    }
+
+    bool removeFirstCardByName(const QString &cardName)
+    {
+        for (int i = 0; i < m_ownedCards.size(); ++i) {
+            if (m_ownedCards.at(i).name() == cardName || m_ownedCards.at(i).displayName() == cardName) {
+                m_ownedCards.removeAt(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void addRelic(const RelicData &relic)
+    {
+        if (relic.id.isEmpty() || hasRelic(relic.id)) {
+            return;
+        }
+        m_relics.append(relic);
+    }
+
+    void addRelicById(const QString &relicId)
+    {
+        addRelic(RelicLibrary::findById(relicId));
+    }
+
+    bool hasRelic(const QString &relicId) const
+    {
+        for (const RelicData &relic : m_relics) {
+            if (relic.id == relicId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool addPotion(const PotionData &potion)
+    {
+        if (potion.id.isEmpty() || m_potions.size() >= maxPotions()) {
+            return false;
+        }
+        m_potions.append(potion);
+        return true;
+    }
+
+    bool addPotionById(const QString &potionId)
+    {
+        return addPotion(PotionLibrary::findById(potionId));
+    }
+
+    bool removePotionAt(int index)
+    {
+        if (index < 0 || index >= m_potions.size()) {
+            return false;
+        }
+        m_potions.removeAt(index);
+        return true;
+    }
+
+    void recordEnemyDefeated(int gradeScoreReward = GameBalance::Rewards::battleGradeScore(),
+                             int creditReward = GameBalance::Rewards::battleCredits())
+    {
+        ++m_defeatedEnemies;
+        addGradeScore(gradeScoreReward);
+        addCredits(creditReward);
+        addCoins(GameBalance::Rewards::battleCoins());
+    }
+
+    void recordEventFinished(int gradeScoreReward = GameBalance::Rewards::eventGradeScore())
+    {
+        ++m_eventsFinished;
+        addGradeScore(gradeScoreReward);
+        addCoins(GameBalance::Rewards::eventCoins());
+    }
+
+    void recordBossDefeated(int gradeScoreReward = GameBalance::Rewards::bossGradeScore(),
+                            int creditReward = GameBalance::Rewards::bossCredits())
+    {
+        m_bossDefeated = true;
+        addGradeScore(gradeScoreReward);
+        addCredits(creditReward);
+        addCoins(GameBalance::Rewards::bossCoins());
+    }
+
+    double estimatedGpa() const
+    {
+        if (m_gradeScore >= GameBalance::Gpa::gradeAThreshold()) {
+            return GameBalance::Gpa::gradeAGpa();
+        }
+        if (m_gradeScore >= GameBalance::Gpa::gradeAMinusThreshold()) {
+            return GameBalance::Gpa::gradeAMinusGpa();
+        }
+        if (m_gradeScore >= GameBalance::Gpa::gradeBPlusThreshold()) {
+            return GameBalance::Gpa::gradeBPlusGpa();
+        }
+        if (m_gradeScore >= GameBalance::Gpa::gradeBThreshold()) {
+            return GameBalance::Gpa::gradeBGpa();
+        }
+        if (m_gradeScore >= GameBalance::Gpa::gradeBMinusThreshold()) {
+            return GameBalance::Gpa::gradeBMinusGpa();
+        }
+        if (m_gradeScore >= GameBalance::Gpa::passThreshold()) {
+            return GameBalance::Gpa::passGpa();
+        }
+        return GameBalance::Gpa::failGpa();
+    }
+
+private:
+    GameState()
+        : m_hp(GameBalance::Player::startMaxHp()),
+          m_maxHp(GameBalance::Player::startMaxHp()),
+          m_gradeScore(0),
+          m_credits(0),
+          m_coins(GameBalance::Player::startCoins()),
+          m_runSeed(1),
+          m_currentFloor(0),
+          m_currentNodeType(MapNodeType::None),
+          m_defeatedEnemies(0),
+          m_eventsFinished(0),
+          m_bossDefeated(false)
+    {
+    }
+
+    GameState(const GameState &) = delete;
+    GameState &operator=(const GameState &) = delete;
+
+    int m_hp;
+    int m_maxHp;
+    int m_gradeScore;
+    int m_credits;
+    int m_coins;
+    quint32 m_runSeed;
+    int m_currentFloor;
+    MapNodeType m_currentNodeType;
+    int m_defeatedEnemies;
+    int m_eventsFinished;
+    bool m_bossDefeated;
+    QList<Card> m_ownedCards;
+    QList<RelicData> m_relics;
+    QList<PotionData> m_potions;
+};
+
+#endif // GAMESTATE_H
