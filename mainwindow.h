@@ -1,11 +1,16 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "core/GameState.h"
+
 #include <QMainWindow>
 #include <QString>
 
 class BattleWidget;
 class EventWidget;
+class MapWidget;
+class RewardWidget;
+class ShopWidget;
 class QStackedWidget;
 class QWidget;
 
@@ -25,21 +30,38 @@ public:
 
 private:
     QWidget *createMenuPage();
-    QWidget *createBattlePage(bool bossBattle = false);
-    QWidget *createEventPreviewPage();
+    QWidget *createMapPage();
+    QWidget *createBattlePage(bool bossBattle = false, bool fromMap = false);
+    QWidget *createEventPreviewPage(bool fromMap = false);
+    QWidget *createShopPage(bool fromMap = false);
+    QWidget *createRewardPage(bool fromMap = false);
+    QWidget *createMapNodePlaceholderPage(const QString &title, const QString &body);
     QWidget *createDebugPlaceholderPage(const QString &title, const QString &body);
+    void startNewRunFromMenu();
+    void showMapPage(bool resetMap = false);
     void showBattlePage();
     void showBossBattlePage();
     void showEventPreviewPage();
+    void showRewardPage(bool fromMap = false);
     void showDebugPlaceholderPage(const QString &title, const QString &body);
+    void openMapNode(MapNodeType nodeType);
+    void finishMapNode(bool completed);
     QString assetPath(const QString &relativePath) const;
 
     Ui::MainWindow *ui;
     QStackedWidget *m_pages;
+    QWidget *m_mapPage;
     QWidget *m_battlePage;
     QWidget *m_eventPage;
+    QWidget *m_shopPage;
+    QWidget *m_rewardPage;
     QWidget *m_debugPage;
+    QWidget *m_mapNodePage;
+    MapWidget *m_mapWidget;
     BattleWidget *m_battleWidget;
     EventWidget *m_eventWidget;
+    ShopWidget *m_shopWidget;
+    RewardWidget *m_rewardWidget;
+    MapNodeType m_activeMapNodeType;
 };
 #endif // MAINWINDOW_H

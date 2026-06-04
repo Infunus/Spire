@@ -2,6 +2,7 @@
 #define HAND_H
 
 #include "Card.h"
+#include "GameBalance.h"
 
 #include <QList>
 #include <QRandomGenerator>
@@ -20,7 +21,7 @@ public:
         shuffle(m_drawPile);
     }
 
-    int drawCards(int count, int maxHandSize = 10)
+    int drawCards(int count, int maxHandSize = GameBalance::Battle::maxHandSize())
     {
         int drawn = 0;
         for (int i = 0; i < count && m_cards.size() < maxHandSize; ++i) {
@@ -40,14 +41,25 @@ public:
 
     Card takeCard(int index)
     {
+        Card card = removeCardFromHand(index);
+        m_discardPile.append(card);
+        return card;
+    }
+
+    Card removeCardFromHand(int index)
+    {
         if (index < 0 || index >= m_cards.size()) {
             return Card();
         }
 
         Card card = m_cards.takeAt(index);
         m_used.removeAt(index);
-        m_discardPile.append(card);
         return card;
+    }
+
+    void addToDiscard(const Card &card)
+    {
+        m_discardPile.append(card);
     }
 
     int discardHand()
@@ -65,6 +77,8 @@ public:
     int drawPileSize() const { return m_drawPile.size(); }
     int discardPileSize() const { return m_discardPile.size(); }
     bool isEmpty() const { return m_cards.isEmpty(); }
+    QList<Card> drawPileCards() const { return m_drawPile; }
+    QList<Card> discardPileCards() const { return m_discardPile; }
 
     Card cardAt(int index) const
     {

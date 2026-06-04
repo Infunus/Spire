@@ -1,6 +1,7 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 
+#include "GameBalance.h"
 #include "GameText.h"
 
 #include <QList>
@@ -161,7 +162,7 @@ public:
 
         int realDamage = damage;
         if (m_vulnerableStacks > 0) {
-            realDamage = damage + damage / 2;
+            realDamage = damage + damage / GameBalance::EnemyStatus::vulnerableBonusDivisor();
         }
 
         const int blockedDamage = qMin(m_block, realDamage);
@@ -175,6 +176,21 @@ public:
         if (m_hp < 0) {
             m_hp = 0;
         }
+    }
+
+    int previewIncomingDamage(int damage) const
+    {
+        if (damage <= 0) {
+            return 0;
+        }
+
+        int realDamage = damage;
+        if (m_vulnerableStacks > 0) {
+            realDamage = damage + damage / GameBalance::EnemyStatus::vulnerableBonusDivisor();
+        }
+
+        realDamage -= qMin(m_block, realDamage);
+        return qMax(0, realDamage);
     }
 
     void heal(int amount)
@@ -211,11 +227,11 @@ public:
     static Enemy createCampusCultist()
     {
         QList<EnemyAction> actions;
-        actions << EnemyAction(EnemyActionBuff, 3)
-                << EnemyAction(EnemyActionAttack, 6)
-                << EnemyAction(EnemyActionAttack, 6);
+        actions << EnemyAction(EnemyActionBuff, GameBalance::Enemies::CampusCultist::firstBuff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::CampusCultist::attackA())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::CampusCultist::attackB());
         return Enemy(GameText::EnemyText::campusCultistName(),
-                     42,
+                     GameBalance::Enemies::CampusCultist::maxHp(),
                      GameText::EnemyText::campusCultistImage(),
                      actions,
                      GameText::EnemyText::campusCultistDescription());
@@ -229,11 +245,13 @@ public:
     static Enemy createProjectNob()
     {
         QList<EnemyAction> actions;
-        actions << EnemyAction(EnemyActionAttack, 10)
-                << EnemyAction(EnemyActionAttackAndBuff, 8, 2)
-                << EnemyAction(EnemyActionAttack, 14);
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::ProjectNob::attackA())
+                << EnemyAction(EnemyActionAttackAndBuff,
+                               GameBalance::Enemies::ProjectNob::attackB(),
+                               GameBalance::Enemies::ProjectNob::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::ProjectNob::attackC());
         return Enemy(GameText::EnemyText::projectNobName(),
-                     74,
+                     GameBalance::Enemies::ProjectNob::maxHp(),
                      GameText::EnemyText::projectNobImage(),
                      actions,
                      GameText::EnemyText::projectNobDescription());
@@ -247,11 +265,13 @@ public:
     static Enemy createHomeworkWorm()
     {
         QList<EnemyAction> actions;
-        actions << EnemyAction(EnemyActionAttackAndBlock, 7, 5)
-                << EnemyAction(EnemyActionBuff, 3)
-                << EnemyAction(EnemyActionAttack, 11);
+        actions << EnemyAction(EnemyActionAttackAndBlock,
+                               GameBalance::Enemies::HomeworkWorm::attackA(),
+                               GameBalance::Enemies::HomeworkWorm::blockA())
+                << EnemyAction(EnemyActionBuff, GameBalance::Enemies::HomeworkWorm::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::HomeworkWorm::attackB());
         return Enemy(GameText::EnemyText::homeworkWormName(),
-                     48,
+                     GameBalance::Enemies::HomeworkWorm::maxHp(),
                      GameText::EnemyText::homeworkWormImage(),
                      actions,
                      GameText::EnemyText::homeworkWormDescription());
@@ -260,11 +280,11 @@ public:
     static Enemy createDdlSlime()
     {
         QList<EnemyAction> actions;
-        actions << EnemyAction(EnemyActionAttack, 8)
-                << EnemyAction(EnemyActionBlock, 5)
-                << EnemyAction(EnemyActionAttack, 10);
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::DdlSlime::attackA())
+                << EnemyAction(EnemyActionBlock, GameBalance::Enemies::DdlSlime::block())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::DdlSlime::attackB());
         return Enemy(GameText::EnemyText::ddlSlimeName(),
-                     36,
+                     GameBalance::Enemies::DdlSlime::maxHp(),
                      GameText::EnemyText::ddlSlimeImage(),
                      actions,
                      GameText::EnemyText::ddlSlimeDescription());
@@ -273,12 +293,14 @@ public:
     static Enemy createFinalExam()
     {
         QList<EnemyAction> actions;
-        actions << EnemyAction(EnemyActionAttack, 14)
-                << EnemyAction(EnemyActionAttackAndBlock, 10, 8)
-                << EnemyAction(EnemyActionBuff, 4)
-                << EnemyAction(EnemyActionAttack, 20);
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::FinalExam::attackA())
+                << EnemyAction(EnemyActionAttackAndBlock,
+                               GameBalance::Enemies::FinalExam::attackB(),
+                               GameBalance::Enemies::FinalExam::block())
+                << EnemyAction(EnemyActionBuff, GameBalance::Enemies::FinalExam::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::FinalExam::attackC());
         return Enemy(GameText::EnemyText::finalExamName(),
-                     110,
+                     GameBalance::Enemies::FinalExam::maxHp(),
                      GameText::EnemyText::finalExamImage(),
                      actions,
                      GameText::EnemyText::finalExamDescription());
@@ -288,7 +310,7 @@ private:
     EnemyAction currentAction() const
     {
         if (m_actions.isEmpty()) {
-            return EnemyAction(EnemyActionAttack, 6);
+            return EnemyAction(EnemyActionAttack, GameBalance::EnemyStatus::fallbackAttack());
         }
         return m_actions.at(m_intentIndex % m_actions.size());
     }
@@ -297,7 +319,8 @@ private:
     {
         int damage = baseDamage + m_strength;
         if (m_weakStacks > 0) {
-            damage = damage * 3 / 4;
+            damage = damage * GameBalance::EnemyStatus::weakDamageNumerator()
+                     / GameBalance::EnemyStatus::weakDamageDenominator();
         }
         return qMax(0, damage);
     }

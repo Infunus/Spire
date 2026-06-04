@@ -9,7 +9,8 @@ class Card
 {
 public:
     Card()
-        : m_cost(0),
+        : m_upgraded(false),
+          m_cost(0),
           m_damage(0),
           m_block(0),
           m_heal(0),
@@ -18,7 +19,8 @@ public:
           m_vulnerable(0),
           m_draw(0),
           m_strengthGain(0),
-          m_strengthMultiplier(1)
+          m_strengthMultiplier(1),
+          m_exhaust(false)
     {
     }
 
@@ -34,8 +36,13 @@ public:
          int draw = 0,
          int strengthGain = 0,
          int strengthMultiplier = 1,
-         const QString &imagePath = QString())
-        : m_name(name),
+         const QString &imagePath = QString(),
+         bool exhaust = false,
+         const QString &id = QString(),
+         bool upgraded = false)
+        : m_id(id),
+          m_name(name),
+          m_upgraded(upgraded),
           m_cost(cost),
           m_damage(damage),
           m_block(block),
@@ -47,11 +54,21 @@ public:
           m_draw(draw),
           m_strengthGain(strengthGain),
           m_strengthMultiplier(strengthMultiplier),
-          m_imagePath(imagePath)
+          m_imagePath(imagePath),
+          m_exhaust(exhaust)
     {
     }
 
+    QString id() const { return m_id; }
     QString name() const { return m_name; }
+    QString displayName() const
+    {
+        if (m_upgraded) {
+            return GameText::CardText::upgradedNameFormat().arg(m_name);
+        }
+        return m_name;
+    }
+    bool upgraded() const { return m_upgraded; }
     int cost() const { return m_cost; }
     int damage() const { return m_damage; }
     int block() const { return m_block; }
@@ -63,18 +80,21 @@ public:
     int strengthGain() const { return m_strengthGain; }
     int strengthMultiplier() const { return m_strengthMultiplier; }
     QString imagePath() const { return m_imagePath; }
+    bool exhaust() const { return m_exhaust; }
     QString description() const { return m_description; }
 
     QString buttonText() const
     {
         return GameText::CardText::buttonTextFormat()
-            .arg(m_name)
+            .arg(displayName())
             .arg(m_cost)
             .arg(m_description);
     }
 
 private:
+    QString m_id;
     QString m_name;
+    bool m_upgraded;
     int m_cost;
     int m_damage;
     int m_block;
@@ -87,6 +107,7 @@ private:
     int m_strengthGain;
     int m_strengthMultiplier;
     QString m_imagePath;
+    bool m_exhaust;
 };
 
 #endif // CARD_H

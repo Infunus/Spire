@@ -3,6 +3,9 @@
 #include "core/GameText.h"
 #include "ui/BattleWidget.h"
 #include "ui/EventWidget.h"
+#include "ui/MapWidget.h"
+#include "ui/RewardWidget.h"
+#include "ui/ShopWidget.h"
 #include "ui_mainwindow.h"
 
 #include <QApplication>
@@ -73,11 +76,19 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::MainWindow),
       m_pages(new QStackedWidget(this)),
+      m_mapPage(nullptr),
       m_battlePage(nullptr),
       m_eventPage(nullptr),
+      m_shopPage(nullptr),
+      m_rewardPage(nullptr),
       m_debugPage(nullptr),
+      m_mapNodePage(nullptr),
+      m_mapWidget(nullptr),
       m_battleWidget(nullptr),
-      m_eventWidget(nullptr)
+      m_eventWidget(nullptr),
+      m_shopWidget(nullptr),
+      m_rewardWidget(nullptr),
+      m_activeMapNodeType(MapNodeType::None)
 {
     ui->setupUi(this);
     GameState::instance().resetForNewRun();
@@ -244,20 +255,28 @@ QWidget *MainWindow::createMenuPage()
     rootLayout->addSpacing(14);
     rootLayout->addWidget(debugPanel, 0, Qt::AlignLeft);
 
-    connect(startButton, &QPushButton::clicked, this, &MainWindow::showBattlePage);
+    connect(startButton, &QPushButton::clicked, this, &MainWindow::startNewRunFromMenu);
     connect(eventButton, &QPushButton::clicked, this, &MainWindow::showEventPreviewPage);
     connect(quitButton, &QPushButton::clicked, qApp, &QApplication::quit);
     connect(debugBattleButton, &QPushButton::clicked, this, &MainWindow::showBattlePage);
     connect(debugBossButton, &QPushButton::clicked, this, &MainWindow::showBossBattlePage);
     connect(debugEventButton, &QPushButton::clicked, this, &MainWindow::showEventPreviewPage);
     connect(debugMapButton, &QPushButton::clicked, this, [this]() {
-        showDebugPlaceholderPage(GameText::DebugText::mapTitle(), GameText::DebugText::mapBody());
+        showMapPage(false);
     });
     connect(debugRewardButton, &QPushButton::clicked, this, [this]() {
-        showDebugPlaceholderPage(GameText::DebugText::rewardTitle(), GameText::DebugText::rewardBody());
+        showRewardPage(false);
     });
     connect(debugShopButton, &QPushButton::clicked, this, [this]() {
-        showDebugPlaceholderPage(GameText::DebugText::shopTitle(), GameText::DebugText::shopBody());
+        if (m_shopPage) {
+            m_pages->removeWidget(m_shopPage);
+            m_shopPage->deleteLater();
+            m_shopPage = nullptr;
+            m_shopWidget = nullptr;
+        }
+        m_shopPage = createShopPage(false);
+        m_pages->addWidget(m_shopPage);
+        m_pages->setCurrentWidget(m_shopPage);
     });
     connect(debugRestButton, &QPushButton::clicked, this, [this]() {
         showDebugPlaceholderPage(GameText::DebugText::restTitle(), GameText::DebugText::restBody());
@@ -266,7 +285,80 @@ QWidget *MainWindow::createMenuPage()
     return page;
 }
 
-QWidget *MainWindow::createBattlePage(bool bossBattle)
+QWidget *MainWindow::createMapPage()
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("MapPage");
+    page->setStyleSheet(
+        "#MapPage { background: #07101a; }"
+        "QFrame#TopBar {"
+        "  background: #10131d;"
+        "  border-bottom: 1px solid rgba(255, 226, 168, 95);"
+        "}"
+        "QPushButton#MenuButton {"
+        "  background: rgba(255, 226, 168, 35);"
+        "  border: 1px solid rgba(255, 226, 168, 120);"
+        "  border-radius: 6px;"
+        "  color: #f7ead0;"
+        "  font-size: 15px;"
+        "  font-weight: 700;"
+        "  padding: 8px 14px;"
+        "}"
+        "QPushButton#MenuButton:hover { background: rgba(255, 226, 168, 70); }");
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    QFrame *topBar = new QFrame(page);
+    topBar->setObjectName("TopBar");
+    topBar->setFixedHeight(50);
+
+    QHBoxLayout *topLayout = new QHBoxLayout(topBar);
+    topLayout->setContentsMargins(18, 6, 18, 6);
+
+    QLabel *titleLabel = new QLabel(GameText::MapText::pageTitle(), topBar);
+    titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
+
+    QPushButton *newRunButton = new QPushButton(GameText::MapText::newRunButton(), topBar);
+    newRunButton->setObjectName("MenuButton");
+    newRunButton->setCursor(Qt::PointingHandCursor);
+
+    QPushButton *menuButton = new QPushButton(GameText::Menu::backToMenuButton(), topBar);
+    menuButton->setObjectName("MenuButton");
+    menuButton->setCursor(Qt::PointingHandCursor);
+
+    topLayout->addWidget(titleLabel);
+    topLayout->addStretch();
+    topLayout->addWidget(newRunButton);
+    topLayout->addWidget(menuButton);
+
+    m_mapWidget = new MapWidget(page);
+    m_mapWidget->setBackgroundImage(assetPath(GameText::Assets::mapBackground()));
+    m_mapWidget->setNodeHandler([this](MapNodeType nodeType) {
+        openMapNode(nodeType);
+    });
+
+    rootLayout->addWidget(topBar);
+    rootLayout->addWidget(m_mapWidget, 1);
+
+    connect(newRunButton, &QPushButton::clicked, this, [this]() {
+        GameState::instance().resetForNewRun();
+        if (m_mapWidget) {
+            m_mapWidget->resetMap();
+        }
+    });
+    connect(menuButton, &QPushButton::clicked, this, [this]() {
+        if (m_mapWidget) {
+            m_mapWidget->cancelPendingNode();
+        }
+        m_pages->setCurrentIndex(0);
+    });
+
+    return page;
+}
+
+QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
 {
     QWidget *page = new QWidget(this);
     page->setObjectName("BattlePage");
@@ -301,7 +393,8 @@ QWidget *MainWindow::createBattlePage(bool bossBattle)
     QLabel *titleLabel = new QLabel(GameText::App::title(), topBar);
     titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
 
-    QPushButton *menuButton = new QPushButton(GameText::Menu::backToMenuButton(), topBar);
+    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+                                                       : GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
 
@@ -310,21 +403,33 @@ QWidget *MainWindow::createBattlePage(bool bossBattle)
     topLayout->addWidget(menuButton);
 
     m_battleWidget = new BattleWidget(page);
-    if (bossBattle) {
-        m_battleWidget->startDebugBattle(true);
+    if (fromMap) {
+        m_battleWidget->startMapBattle(bossBattle, [this](bool victory) {
+            if (victory && m_activeMapNodeType == MapNodeType::Battle) {
+                showRewardPage(true);
+            } else {
+                finishMapNode(victory);
+            }
+        });
+    } else {
+        m_battleWidget->startDebugBattle(bossBattle);
     }
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_battleWidget, 1);
 
-    connect(menuButton, &QPushButton::clicked, this, [this]() {
-        m_pages->setCurrentIndex(0);
+    connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(false);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
     });
 
     return page;
 }
 
-QWidget *MainWindow::createEventPreviewPage()
+QWidget *MainWindow::createEventPreviewPage(bool fromMap)
 {
     QWidget *page = new QWidget(this);
     page->setObjectName("EventPreviewPage");
@@ -380,19 +485,198 @@ QWidget *MainWindow::createEventPreviewPage()
                          << RandomEventChoice{GameText::EventText::previewChoiceC(), QString()};
     m_eventWidget->setEvent(previewEvent);
 
-    m_eventWidget->setChoiceHandler([](int choiceIndex, const RandomEventChoice &choice) {
+    m_eventWidget->setChoiceHandler([this, fromMap](int choiceIndex, const RandomEventChoice &choice) {
         Q_UNUSED(choiceIndex);
         Q_UNUSED(choice);
         // 后续随机事件效果可以从这里接到 GameState / Player / Deck。
+        if (fromMap) {
+            GameState::instance().recordEventFinished();
+            finishMapNode(true);
+        }
     });
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_eventWidget, 1);
 
-    connect(menuButton, &QPushButton::clicked, this, [this]() {
-        m_pages->setCurrentIndex(0);
+    connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(false);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
     });
 
+    return page;
+}
+
+QWidget *MainWindow::createShopPage(bool fromMap)
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("ShopPage");
+    page->setStyleSheet(
+        "#ShopPage { background: #17130f; }"
+        "QFrame#TopBar {"
+        "  background: #1f1716;"
+        "  border-bottom: 1px solid rgba(255, 226, 168, 95);"
+        "}"
+        "QPushButton#MenuButton {"
+        "  background: rgba(255, 226, 168, 35);"
+        "  border: 1px solid rgba(255, 226, 168, 120);"
+        "  border-radius: 6px;"
+        "  color: #f7ead0;"
+        "  font-size: 15px;"
+        "  font-weight: 700;"
+        "  padding: 8px 14px;"
+        "}"
+        "QPushButton#MenuButton:hover { background: rgba(255, 226, 168, 70); }");
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    QFrame *topBar = new QFrame(page);
+    topBar->setObjectName("TopBar");
+    topBar->setFixedHeight(50);
+
+    QHBoxLayout *topLayout = new QHBoxLayout(topBar);
+    topLayout->setContentsMargins(18, 6, 18, 6);
+
+    QLabel *titleLabel = new QLabel(GameText::ShopText::pageTitle(), topBar);
+    titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
+
+    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+                                                       : GameText::Menu::backToMenuButton(), topBar);
+    menuButton->setObjectName("MenuButton");
+    menuButton->setCursor(Qt::PointingHandCursor);
+
+    topLayout->addWidget(titleLabel);
+    topLayout->addStretch();
+    topLayout->addWidget(menuButton);
+
+    m_shopWidget = new ShopWidget(page);
+    m_shopWidget->setFinishHandler([this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(true);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    rootLayout->addWidget(topBar);
+    rootLayout->addWidget(m_shopWidget, 1);
+
+    connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(false);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    return page;
+}
+
+QWidget *MainWindow::createRewardPage(bool fromMap)
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("RewardPage");
+    page->setStyleSheet(
+        "#RewardPage { background: #10131d; }"
+        "QFrame#TopBar {"
+        "  background: #1b1f2b;"
+        "  border-bottom: 1px solid rgba(185, 215, 255, 100);"
+        "}"
+        "QPushButton#MenuButton {"
+        "  background: rgba(255, 226, 168, 35);"
+        "  border: 1px solid rgba(255, 226, 168, 120);"
+        "  border-radius: 6px;"
+        "  color: #f7ead0;"
+        "  font-size: 15px;"
+        "  font-weight: 700;"
+        "  padding: 8px 14px;"
+        "}"
+        "QPushButton#MenuButton:hover { background: rgba(255, 226, 168, 70); }");
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    QFrame *topBar = new QFrame(page);
+    topBar->setObjectName("TopBar");
+    topBar->setFixedHeight(50);
+
+    QHBoxLayout *topLayout = new QHBoxLayout(topBar);
+    topLayout->setContentsMargins(18, 6, 18, 6);
+
+    QLabel *titleLabel = new QLabel(GameText::RewardText::pageTitle(), topBar);
+    titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
+
+    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+                                                       : GameText::Menu::backToMenuButton(), topBar);
+    menuButton->setObjectName("MenuButton");
+    menuButton->setCursor(Qt::PointingHandCursor);
+
+    topLayout->addWidget(titleLabel);
+    topLayout->addStretch();
+    topLayout->addWidget(menuButton);
+
+    m_rewardWidget = new RewardWidget(page);
+    m_rewardWidget->setFinishHandler([this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(true);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+    m_rewardWidget->openRewards();
+
+    rootLayout->addWidget(topBar);
+    rootLayout->addWidget(m_rewardWidget, 1);
+
+    connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(false);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    return page;
+}
+
+QWidget *MainWindow::createMapNodePlaceholderPage(const QString &title, const QString &body)
+{
+    QWidget *page = createDebugPlaceholderPage(title, body);
+    const QList<QPushButton *> buttons = page->findChildren<QPushButton *>(QStringLiteral("MenuButton"));
+    for (QPushButton *button : buttons) {
+        button->setText(GameText::MapText::backToMapButton());
+        button->disconnect();
+        connect(button, &QPushButton::clicked, this, [this]() {
+            finishMapNode(false);
+        });
+    }
+
+    QPushButton *completeButton = new QPushButton(GameText::MapText::completeNodeButton(), page);
+    completeButton->setCursor(Qt::PointingHandCursor);
+    completeButton->setFixedSize(150, 42);
+    completeButton->setStyleSheet(
+        "background: rgba(222, 170, 78, 225);"
+        "border: 2px solid rgba(255, 235, 177, 235);"
+        "border-radius: 8px;"
+        "color: #26150d;"
+        "font-size: 16px;"
+        "font-weight: 900;");
+    completeButton->move(width() / 2, height() / 2);
+    completeButton->raise();
+
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout *>(page->layout());
+    if (layout) {
+        layout->insertWidget(layout->count() - 1, completeButton, 0, Qt::AlignCenter);
+    }
+
+    connect(completeButton, &QPushButton::clicked, this, [this]() {
+        finishMapNode(true);
+    });
     return page;
 }
 
@@ -476,6 +760,24 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
     return page;
 }
 
+void MainWindow::startNewRunFromMenu()
+{
+    GameState::instance().resetForNewRun();
+    showMapPage(true);
+}
+
+void MainWindow::showMapPage(bool resetMap)
+{
+    if (!m_mapPage) {
+        m_mapPage = createMapPage();
+        m_pages->addWidget(m_mapPage);
+    }
+    if (resetMap && m_mapWidget) {
+        m_mapWidget->resetMap();
+    }
+    m_pages->setCurrentWidget(m_mapPage);
+}
+
 void MainWindow::showBattlePage()
 {
     if (m_battlePage) {
@@ -485,7 +787,7 @@ void MainWindow::showBattlePage()
         m_battleWidget = nullptr;
     }
 
-    m_battlePage = createBattlePage(false);
+    m_battlePage = createBattlePage(false, false);
     m_pages->addWidget(m_battlePage);
     m_pages->setCurrentWidget(m_battlePage);
 }
@@ -499,7 +801,7 @@ void MainWindow::showBossBattlePage()
         m_battleWidget = nullptr;
     }
 
-    m_battlePage = createBattlePage(true);
+    m_battlePage = createBattlePage(true, false);
     m_pages->addWidget(m_battlePage);
     m_pages->setCurrentWidget(m_battlePage);
 }
@@ -513,9 +815,23 @@ void MainWindow::showEventPreviewPage()
         m_eventWidget = nullptr;
     }
 
-    m_eventPage = createEventPreviewPage();
+    m_eventPage = createEventPreviewPage(false);
     m_pages->addWidget(m_eventPage);
     m_pages->setCurrentWidget(m_eventPage);
+}
+
+void MainWindow::showRewardPage(bool fromMap)
+{
+    if (m_rewardPage) {
+        m_pages->removeWidget(m_rewardPage);
+        m_rewardPage->deleteLater();
+        m_rewardPage = nullptr;
+        m_rewardWidget = nullptr;
+    }
+
+    m_rewardPage = createRewardPage(fromMap);
+    m_pages->addWidget(m_rewardPage);
+    m_pages->setCurrentWidget(m_rewardPage);
 }
 
 void MainWindow::showDebugPlaceholderPage(const QString &title, const QString &body)
@@ -531,14 +847,102 @@ void MainWindow::showDebugPlaceholderPage(const QString &title, const QString &b
     m_pages->setCurrentWidget(m_debugPage);
 }
 
+void MainWindow::openMapNode(MapNodeType nodeType)
+{
+    m_activeMapNodeType = nodeType;
+    GameState::instance().setCurrentNode(nodeType);
+
+    if (nodeType == MapNodeType::Battle || nodeType == MapNodeType::Boss) {
+        if (m_battlePage) {
+            m_pages->removeWidget(m_battlePage);
+            m_battlePage->deleteLater();
+            m_battlePage = nullptr;
+            m_battleWidget = nullptr;
+        }
+        m_battlePage = createBattlePage(nodeType == MapNodeType::Boss, true);
+        m_pages->addWidget(m_battlePage);
+        m_pages->setCurrentWidget(m_battlePage);
+        return;
+    }
+
+    if (nodeType == MapNodeType::Event) {
+        if (m_eventPage) {
+            m_pages->removeWidget(m_eventPage);
+            m_eventPage->deleteLater();
+            m_eventPage = nullptr;
+            m_eventWidget = nullptr;
+        }
+        m_eventPage = createEventPreviewPage(true);
+        m_pages->addWidget(m_eventPage);
+        m_pages->setCurrentWidget(m_eventPage);
+        return;
+    }
+
+    if (nodeType == MapNodeType::Shop) {
+        if (m_shopPage) {
+            m_pages->removeWidget(m_shopPage);
+            m_shopPage->deleteLater();
+            m_shopPage = nullptr;
+            m_shopWidget = nullptr;
+        }
+        m_shopPage = createShopPage(true);
+        m_pages->addWidget(m_shopPage);
+        m_pages->setCurrentWidget(m_shopPage);
+        return;
+    }
+
+    if (nodeType == MapNodeType::Reward) {
+        showRewardPage(true);
+        return;
+    }
+
+    if (m_mapNodePage) {
+        m_pages->removeWidget(m_mapNodePage);
+        m_mapNodePage->deleteLater();
+        m_mapNodePage = nullptr;
+    }
+
+    if (nodeType == MapNodeType::Rest) {
+        m_mapNodePage = createMapNodePlaceholderPage(GameText::DebugText::restTitle(), GameText::DebugText::restBody());
+    } else {
+        m_mapNodePage = createMapNodePlaceholderPage(GameText::DebugText::mapTitle(), GameText::DebugText::mapBody());
+    }
+
+    m_pages->addWidget(m_mapNodePage);
+    m_pages->setCurrentWidget(m_mapNodePage);
+}
+
+void MainWindow::finishMapNode(bool completed)
+{
+    if (completed && m_mapWidget) {
+        GameState::instance().advanceFloor(m_activeMapNodeType);
+        m_mapWidget->completeCurrentNode();
+    } else if (m_mapWidget) {
+        m_mapWidget->cancelPendingNode();
+    }
+
+    m_activeMapNodeType = MapNodeType::None;
+    showMapPage(false);
+}
+
 QString MainWindow::assetPath(const QString &relativePath) const
 {
-    const QDir sourceDir(QFileInfo(QString::fromUtf8(__FILE__)).absolutePath());
-    const QStringList candidates = {
-        sourceDir.filePath(relativePath),
-        QDir(QCoreApplication::applicationDirPath()).filePath(relativePath),
-        QDir::current().filePath(relativePath)
+    QStringList candidates;
+
+    auto addCandidatesFrom = [&candidates, &relativePath](const QDir &startDir) {
+        QDir dir(startDir);
+        for (int i = 0; i < 8; ++i) {
+            candidates << dir.filePath(relativePath);
+            candidates << dir.filePath(QStringLiteral("Spire/%1").arg(relativePath));
+            if (!dir.cdUp()) {
+                break;
+            }
+        }
     };
+
+    addCandidatesFrom(QDir(QCoreApplication::applicationDirPath()));
+    addCandidatesFrom(QDir::current());
+    addCandidatesFrom(QDir(QFileInfo(QString::fromUtf8(__FILE__)).absolutePath()));
 
     for (const QString &candidate : candidates) {
         if (QFileInfo::exists(candidate)) {

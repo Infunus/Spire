@@ -1,7 +1,10 @@
 #ifndef GAMESTATE_H
 #define GAMESTATE_H
 
-#include "Card.h"
+#include "CardLibrary.h"
+#include "GameBalance.h"
+#include "Potion.h"
+#include "Relic.h"
 
 #include <QList>
 #include <QString>
@@ -18,13 +21,6 @@ enum class MapNodeType
     Boss
 };
 
-struct RelicData
-{
-    QString id;
-    QString name;
-    QString description;
-};
-
 class GameState
 {
 public:
@@ -36,18 +32,22 @@ public:
 
     void resetForNewRun()
     {
-        m_maxHp = 70;
+        m_maxHp = GameBalance::Player::startMaxHp();
         m_hp = m_maxHp;
         m_gradeScore = 0;
         m_credits = 0;
-        m_coins = 0;
+        m_coins = GameBalance::Player::startCoins();
         m_currentFloor = 0;
         m_currentNodeType = MapNodeType::None;
         m_defeatedEnemies = 0;
         m_eventsFinished = 0;
         m_bossDefeated = false;
-        m_ownedCards.clear();
+        m_ownedCards = CardLibrary::starterDeck();
         m_relics.clear();
+        m_potions.clear();
+        addRelic(RelicLibrary::starterRelic());
+        addPotion(PotionLibrary::createCoffeeShot());
+        addPotion(PotionLibrary::createAntiBreakSpray());
     }
 
     int hp() const { return m_hp; }
@@ -64,6 +64,8 @@ public:
 
     QList<Card> ownedCards() const { return m_ownedCards; }
     QList<RelicData> relics() const { return m_relics; }
+    QList<PotionData> potions() const { return m_potions; }
+    int maxPotions() const { return GameBalance::Player::maxPotions(); }
 
     void setMaxHp(int maxHp, bool healToFull = false)
     {
@@ -151,10 +153,47 @@ public:
         return true;
     }
 
+    bool canUpgradeCardAt(int index) const
+    {
+        if (index < 0 || index >= m_ownedCards.size()) {
+            return false;
+        }
+        return CardLibrary::canUpgrade(m_ownedCards.at(index));
+    }
+
+    bool upgradeCardAt(int index)
+    {
+        if (!canUpgradeCardAt(index)) {
+            return false;
+        }
+        m_ownedCards[index] = CardLibrary::upgradedCard(m_ownedCards.at(index));
+        return true;
+    }
+
+    bool upgradeFirstCardByName(const QString &cardName)
+    {
+        for (int i = 0; i < m_ownedCards.size(); ++i) {
+            if (m_ownedCards.at(i).name() == cardName || m_ownedCards.at(i).displayName() == cardName) {
+                return upgradeCardAt(i);
+            }
+        }
+        return false;
+    }
+
+    bool upgradeFirstCardById(const QString &cardId)
+    {
+        for (int i = 0; i < m_ownedCards.size(); ++i) {
+            if (m_ownedCards.at(i).id() == cardId) {
+                return upgradeCardAt(i);
+            }
+        }
+        return false;
+    }
+
     bool removeFirstCardByName(const QString &cardName)
     {
         for (int i = 0; i < m_ownedCards.size(); ++i) {
-            if (m_ownedCards.at(i).name() == cardName) {
+            if (m_ownedCards.at(i).name() == cardName || m_ownedCards.at(i).displayName() == cardName) {
                 m_ownedCards.removeAt(i);
                 return true;
             }
@@ -170,6 +209,11 @@ public:
         m_relics.append(relic);
     }
 
+    void addRelicById(const QString &relicId)
+    {
+        addRelic(RelicLibrary::findById(relicId));
+    }
+
     bool hasRelic(const QString &relicId) const
     {
         for (const RelicData &relic : m_relics) {
@@ -180,56 +224,84 @@ public:
         return false;
     }
 
-    void recordEnemyDefeated(int gradeScoreReward = 5, int creditReward = 1)
+    bool addPotion(const PotionData &potion)
+    {
+        if (potion.id.isEmpty() || m_potions.size() >= maxPotions()) {
+            return false;
+        }
+        m_potions.append(potion);
+        return true;
+    }
+
+    bool addPotionById(const QString &potionId)
+    {
+        return addPotion(PotionLibrary::findById(potionId));
+    }
+
+    bool removePotionAt(int index)
+    {
+        if (index < 0 || index >= m_potions.size()) {
+            return false;
+        }
+        m_potions.removeAt(index);
+        return true;
+    }
+
+    void recordEnemyDefeated(int gradeScoreReward = GameBalance::Rewards::battleGradeScore(),
+                             int creditReward = GameBalance::Rewards::battleCredits())
     {
         ++m_defeatedEnemies;
         addGradeScore(gradeScoreReward);
         addCredits(creditReward);
+        addCoins(GameBalance::Rewards::battleCoins());
     }
 
-    void recordEventFinished(int gradeScoreReward = 2)
+    void recordEventFinished(int gradeScoreReward = GameBalance::Rewards::eventGradeScore())
     {
         ++m_eventsFinished;
         addGradeScore(gradeScoreReward);
+        addCoins(GameBalance::Rewards::eventCoins());
     }
 
-    void recordBossDefeated(int gradeScoreReward = 20, int creditReward = 3)
+    void recordBossDefeated(int gradeScoreReward = GameBalance::Rewards::bossGradeScore(),
+                            int creditReward = GameBalance::Rewards::bossCredits())
     {
         m_bossDefeated = true;
         addGradeScore(gradeScoreReward);
         addCredits(creditReward);
+        addCoins(GameBalance::Rewards::bossCoins());
     }
 
     double estimatedGpa() const
     {
-        if (m_gradeScore >= 90) {
-            return 4.0;
+        if (m_gradeScore >= GameBalance::Gpa::gradeAThreshold()) {
+            return GameBalance::Gpa::gradeAGpa();
         }
-        if (m_gradeScore >= 85) {
-            return 3.7;
+        if (m_gradeScore >= GameBalance::Gpa::gradeAMinusThreshold()) {
+            return GameBalance::Gpa::gradeAMinusGpa();
         }
-        if (m_gradeScore >= 80) {
-            return 3.3;
+        if (m_gradeScore >= GameBalance::Gpa::gradeBPlusThreshold()) {
+            return GameBalance::Gpa::gradeBPlusGpa();
         }
-        if (m_gradeScore >= 75) {
-            return 3.0;
+        if (m_gradeScore >= GameBalance::Gpa::gradeBThreshold()) {
+            return GameBalance::Gpa::gradeBGpa();
         }
-        if (m_gradeScore >= 70) {
-            return 2.7;
+        if (m_gradeScore >= GameBalance::Gpa::gradeBMinusThreshold()) {
+            return GameBalance::Gpa::gradeBMinusGpa();
         }
-        if (m_gradeScore >= 60) {
-            return 2.0;
+        if (m_gradeScore >= GameBalance::Gpa::passThreshold()) {
+            return GameBalance::Gpa::passGpa();
         }
-        return 0.0;
+        return GameBalance::Gpa::failGpa();
     }
 
 private:
     GameState()
-        : m_hp(70),
-          m_maxHp(70),
+        : m_hp(GameBalance::Player::startMaxHp()),
+          m_maxHp(GameBalance::Player::startMaxHp()),
           m_gradeScore(0),
           m_credits(0),
-          m_coins(0),
+          m_coins(GameBalance::Player::startCoins()),
           m_currentFloor(0),
           m_currentNodeType(MapNodeType::None),
           m_defeatedEnemies(0),
@@ -253,6 +325,7 @@ private:
     bool m_bossDefeated;
     QList<Card> m_ownedCards;
     QList<RelicData> m_relics;
+    QList<PotionData> m_potions;
 };
 
 #endif // GAMESTATE_H
