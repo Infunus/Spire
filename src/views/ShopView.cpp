@@ -1,9 +1,12 @@
 #include "ShopView.h"
 
 #include "core/GameManager.h"
+#include "data/CardData.h"
 #include "data/GameText.h"
 
+#include <QDialog>
 #include <QFrame>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -58,7 +61,10 @@ ShopView::ShopView(QWidget *parent)
 void ShopView::openShop()
 {
     saleRelics.clear();
+    salePotions = PotionCatalog::rewardPotions();
     boughtRelicIds.clear();
+    boughtPotionIds.clear();
+    cardRemovalBought = false;
 
     const QStringList ownedRelics = GameManager::instance()->runData().relicIds;
     for (const RelicData &relic : RelicCatalog::testRelics()) {
@@ -117,6 +123,82 @@ void ShopView::rebuildItems()
         rowLayout->addWidget(buyButton);
         itemsLayout->addWidget(row);
     }
+
+    for (const PotionData &potion : salePotions) {
+        QFrame *row = new QFrame(this);
+        row->setObjectName("shopItem");
+        QHBoxLayout *rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(18, 14, 18, 14);
+        QLabel *label = new QLabel(QString::fromUtf8(u8"药水：%1\n%2").arg(potion.name, potion.effect), row);
+        label->setWordWrap(true);
+        QPushButton *buyButton = new QPushButton(GameText::Shop::buyButtonFormat().arg(priceForPotion(potion)), row);
+        const bool bought = boughtPotionIds.contains(potion.id);
+        buyButton->setEnabled(!bought);
+        if (bought) {
+            buyButton->setText(GameText::Shop::boughtButton());
+        }
+        connect(buyButton, &QPushButton::clicked, this, [this, potion]() {
+            const int price = priceForPotion(potion);
+            if (!GameManager::instance()->spendGold(price)) {
+                messageLabel->setText(GameText::Shop::notEnoughGoldFormat().arg(potion.name));
+                return;
+            }
+            if (!GameManager::instance()->addPotion(potion.id)) {
+                GameManager::instance()->addGold(price);
+                messageLabel->setText(QString::fromUtf8(u8"药水栏已满，无法购买。"));
+                return;
+            }
+            boughtPotionIds.append(potion.id);
+            messageLabel->setText(GameText::Shop::boughtFormat().arg(potion.name));
+            rebuildItems();
+        });
+        rowLayout->addWidget(label, 1);
+        rowLayout->addWidget(buyButton);
+        itemsLayout->addWidget(row);
+    }
+
+    QFrame *removeRow = new QFrame(this);
+    removeRow->setObjectName("shopItem");
+    QHBoxLayout *removeLayout = new QHBoxLayout(removeRow);
+    removeLayout->setContentsMargins(18, 14, 18, 14);
+    QLabel *removeLabel = new QLabel(QString::fromUtf8(u8"服务：移除一张卡牌\n从当前牌组中永久删除一张卡牌。"), removeRow);
+    removeLabel->setWordWrap(true);
+    QPushButton *removeButton = new QPushButton(GameText::Shop::buyButtonFormat().arg(priceForCardRemoval()), removeRow);
+    removeButton->setEnabled(!cardRemovalBought);
+    if (cardRemovalBought) {
+        removeButton->setText(GameText::Shop::boughtButton());
+    }
+    connect(removeButton, &QPushButton::clicked, this, [this]() {
+        const int price = priceForCardRemoval();
+        if (!GameManager::instance()->spendGold(price)) {
+            messageLabel->setText(QString::fromUtf8(u8"金币不足，无法移除卡牌。"));
+            return;
+        }
+        QDialog *dialog = new QDialog(this);
+        dialog->setWindowTitle(QString::fromUtf8(u8"选择要移除的卡牌"));
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        QGridLayout *grid = new QGridLayout(dialog);
+        const QStringList deck = GameManager::instance()->runData().deckIds;
+        for (int i = 0; i < deck.size(); ++i) {
+            const CardData card = CardCatalog::byId(deck[i]);
+            QPushButton *button = new QPushButton(QStringLiteral("%1\n%2").arg(card.name, card.description), dialog);
+            button->setMinimumSize(150, 90);
+            connect(button, &QPushButton::clicked, this, [this, dialog, i]() {
+                if (GameManager::instance()->removeCardAt(i)) {
+                    cardRemovalBought = true;
+                    messageLabel->setText(QString::fromUtf8(u8"卡牌已移除。"));
+                    dialog->close();
+                    rebuildItems();
+                }
+            });
+            grid->addWidget(button, i / 3, i % 3);
+        }
+        dialog->resize(620, 420);
+        dialog->show();
+    });
+    removeLayout->addWidget(removeLabel, 1);
+    removeLayout->addWidget(removeButton);
+    itemsLayout->addWidget(removeRow);
 }
 
 int ShopView::priceForRelic(const RelicData &relic) const
@@ -128,4 +210,15 @@ int ShopView::priceForRelic(const RelicData &relic) const
         price = 72;
     }
     return price;
+}
+
+int ShopView::priceForPotion(const PotionData &potion) const
+{
+    Q_UNUSED(potion)
+    return 45;
+}
+
+int ShopView::priceForCardRemoval() const
+{
+    return 75;
 }

@@ -18,6 +18,7 @@ enum class EventKind {
     BossBattle,
     Merchant,
     RestSite,
+    Question,
     FinalBoss,
     Completed,
     Death

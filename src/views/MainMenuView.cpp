@@ -45,9 +45,9 @@ protected:
         }
 
         QLinearGradient shade(rect().topLeft(), rect().bottomRight());
-        shade.setColorAt(0.0, QColor(18, 10, 12, 145));
-        shade.setColorAt(0.45, QColor(18, 10, 12, 60));
-        shade.setColorAt(1.0, QColor(7, 9, 14, 190));
+        shade.setColorAt(0.0, QColor(8, 5, 6, 185));
+        shade.setColorAt(0.45, QColor(8, 5, 6, 115));
+        shade.setColorAt(1.0, QColor(4, 6, 10, 215));
         painter.fillRect(rect(), shade);
     }
 
@@ -84,13 +84,19 @@ MainMenuView::MainMenuView(QWidget *parent)
     backgroundLayer->lower();
 
     QLabel *schoolLabel = new QLabel(GameText::App::schoolLabel(), this);
-    schoolLabel->setStyleSheet("color: rgba(255,239,194,205); font-size: 18px; font-weight: 700;");
+    schoolLabel->setStyleSheet(
+        "color: #fff2bd; background: rgba(8, 5, 6, 150); border-radius: 6px;"
+        "padding: 5px 10px; font-size: 19px; font-weight: 900;");
 
     QLabel *titleLabel = new QLabel(GameText::App::title(), this);
-    titleLabel->setStyleSheet("font-size: 58px; font-weight: 900;");
+    titleLabel->setStyleSheet(
+        "color: #fff8dc; background: rgba(8, 5, 6, 165); border-radius: 8px;"
+        "padding: 8px 16px; font-size: 66px; font-weight: 900;");
 
     QLabel *subtitleLabel = new QLabel(GameText::App::subtitle(), this);
-    subtitleLabel->setStyleSheet("color: rgba(255,248,226,220); font-size: 23px; font-weight: 600;");
+    subtitleLabel->setStyleSheet(
+        "color: #fff1c8; background: rgba(8, 5, 6, 135); border-radius: 6px;"
+        "padding: 5px 12px; font-size: 25px; font-weight: 900;");
 
     QPushButton *startButton = new QPushButton(GameText::Menu::startButton(), this);
     startButton->setCursor(Qt::PointingHandCursor);
@@ -103,8 +109,10 @@ MainMenuView::MainMenuView(QWidget *parent)
 
     QWidget *debugPanel = new QWidget(this);
     debugPanel->setStyleSheet(
-        "QWidget { background: rgba(18, 22, 29, 140); border-radius: 8px; }"
-        "QPushButton { font-size: 13px; padding: 7px 10px; border-radius: 6px; }");
+        "QWidget { background: rgba(8, 5, 6, 175); border-radius: 8px; }"
+        "QPushButton { color: #fff7de; background: rgba(137, 72, 29, 235);"
+        "border: 1px solid rgba(255, 226, 168, 210); font-size: 13px;"
+        "font-weight: 900; padding: 7px 10px; border-radius: 6px; }");
     QGridLayout *debugLayout = new QGridLayout(debugPanel);
     debugLayout->setContentsMargins(10, 10, 10, 10);
     debugLayout->setSpacing(8);

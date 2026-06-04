@@ -59,6 +59,8 @@ public:
     static CardData strike();
     static CardData defend();
     static CardData byId(const QString &id);
+    static QString upgradedId(const QString &id);
+    static bool isUpgradedId(const QString &id);
     static std::vector<CardData> starterDeck();
     static std::vector<CardData> rewardCards();
     static QString typeName(CardType type);

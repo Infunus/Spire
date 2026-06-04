@@ -69,6 +69,34 @@ void GameManager::addCard(const QString &cardId)
     emit itemAcquired(QString::fromUtf8(u8"你获得了卡牌：%1").arg(CardCatalog::byId(cardId).name));
 }
 
+bool GameManager::upgradeCardAt(int index)
+{
+    if (index < 0 || index >= currentRun.deckIds.size()) {
+        return false;
+    }
+    if (CardCatalog::isUpgradedId(currentRun.deckIds[index])) {
+        return false;
+    }
+
+    currentRun.deckIds[index] = CardCatalog::upgradedId(currentRun.deckIds[index]);
+    emit runDataChanged();
+    emit itemAcquired(QString::fromUtf8(u8"你锻造了卡牌：%1").arg(CardCatalog::byId(currentRun.deckIds[index]).name));
+    return true;
+}
+
+bool GameManager::removeCardAt(int index)
+{
+    if (index < 0 || index >= currentRun.deckIds.size()) {
+        return false;
+    }
+
+    const QString removedName = CardCatalog::byId(currentRun.deckIds[index]).name;
+    currentRun.deckIds.removeAt(index);
+    emit runDataChanged();
+    emit itemAcquired(QString::fromUtf8(u8"你移除了卡牌：%1").arg(removedName));
+    return true;
+}
+
 void GameManager::addGold(int amount)
 {
     if (amount <= 0) {

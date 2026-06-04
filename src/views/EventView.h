@@ -30,6 +30,9 @@ private:
     QLabel *titleLabel;
     QLabel *descriptionLabel;
     QPushButton *exitButton;
+    QPushButton *primaryButton;
+    QPushButton *secondaryButton;
+    EventData currentEvent;
 };
 
 #endif // EVENTVIEW_H

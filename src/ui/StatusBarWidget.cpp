@@ -180,9 +180,14 @@ StatusBarWidget::StatusBarWidget(QWidget *parent)
 
     relicPanel->setAttribute(Qt::WA_StyledBackground, true);
     relicPanel->setStyleSheet("background: transparent;");
-    relicLayout->setContentsMargins(4, 0, 4, 0);
-    relicLayout->setHorizontalSpacing(5);
-    relicLayout->setVerticalSpacing(3);
+    relicLayout->setContentsMargins(0, 0, 0, 0);
+    relicLayout->setHorizontalSpacing(1);
+    relicLayout->setVerticalSpacing(1);
+    relicLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    for (int column = 0; column < 15; ++column) {
+        relicLayout->setColumnMinimumWidth(column, 31);
+        relicLayout->setColumnStretch(column, 0);
+    }
 
     rootLayout->addWidget(topFrame);
     rootLayout->addWidget(relicPanel);
@@ -279,7 +284,7 @@ void StatusBarWidget::rebuildRelics(const std::vector<QPixmap> &icons)
         RelicIconWidget *relic = new RelicIconWidget(relicPanel);
         relic->setIcon(icons[i]);
         relic->setColor(colors[i % colors.size()]);
-        relicLayout->addWidget(relic, i / 15, i % 15, Qt::AlignLeft | Qt::AlignTop);
+        relicLayout->addWidget(relic, i / 15, i % 15);
     }
 }
 
@@ -305,7 +310,7 @@ void StatusBarWidget::rebuildRelics(const std::vector<RelicData> &relics)
         relicWidget->setColor(colors[i % colors.size()]);
         relicWidget->setRelic(relics[i]);
         connect(relicWidget, &RelicIconWidget::clicked, this, &StatusBarWidget::relicClicked);
-        relicLayout->addWidget(relicWidget, i / 15, i % 15, Qt::AlignLeft | Qt::AlignTop);
+        relicLayout->addWidget(relicWidget, i / 15, i % 15);
     }
 }
 

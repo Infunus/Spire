@@ -114,6 +114,63 @@ CardData CardCatalog::defend()
 
 CardData CardCatalog::byId(const QString &id)
 {
+    const bool upgraded = isUpgradedId(id);
+    const QString baseId = upgraded ? id.left(id.size() - 1) : id;
+    CardData card;
+    if (baseId == QStringLiteral("strike")) {
+        card = strike();
+    } else if (baseId == QStringLiteral("defend")) {
+        card = defend();
+    } else {
+        for (const CardData &candidate : rewardPool()) {
+            if (candidate.id == baseId) {
+                card = candidate;
+                break;
+            }
+        }
+        if (card.id.isEmpty()) {
+            card = strike();
+        }
+    }
+
+    if (!upgraded) {
+        return card;
+    }
+
+    card.id = upgradedId(card.id);
+    card.name += QStringLiteral("+");
+    if (card.damage > 0) {
+        card.damage += qMax(2, card.damage / 3);
+    }
+    if (card.block > 0) {
+        card.block += qMax(2, card.block / 3);
+    }
+    if (card.enemyWeak > 0) {
+        ++card.enemyWeak;
+    }
+    if (card.enemyVulnerable > 0) {
+        ++card.enemyVulnerable;
+    }
+    if (card.cost > 0 && card.damage == 0 && card.block == 0) {
+        --card.cost;
+    }
+    card.description = QString::fromUtf8(u8"升级：%1").arg(card.description);
+    return card;
+}
+
+QString CardCatalog::upgradedId(const QString &id)
+{
+    return isUpgradedId(id) ? id : id + QStringLiteral("+");
+}
+
+bool CardCatalog::isUpgradedId(const QString &id)
+{
+    return id.endsWith(QLatin1Char('+'));
+}
+
+#if 0
+CardData CardCatalog::byIdOld(const QString &id)
+{
     if (id == QStringLiteral("strike")) {
         return strike();
     }
@@ -128,6 +185,7 @@ CardData CardCatalog::byId(const QString &id)
     }
     return strike();
 }
+#endif
 
 std::vector<CardData> CardCatalog::starterDeck()
 {

@@ -3,6 +3,9 @@
 
 #include <QWidget>
 #include <QPoint>
+#include <QList>
+#include <QPair>
+#include <QRect>
 #include <vector>
 
 #include "data/CardData.h"
@@ -10,6 +13,7 @@
 #include "data/PotionData.h"
 
 class QLabel;
+class QProgressBar;
 class QPushButton;
 class QHBoxLayout;
 class QVBoxLayout;
@@ -64,10 +68,12 @@ private:
     void refreshPileButtons();
     void showPileDialog(PileKind pileKind);
     QString cardLine(const CardData &card) const;
-    void selectCard(int handIndex);
-    void confirmSelectedCard();
+    void rebuildStatusIcons(QHBoxLayout *layout, const QList<QPair<QString, int>> &statuses, bool playerSide);
+    void showStatusDialog(const QString &name, const QString &description);
+    void showDamagePopup(QWidget *anchor, int damage);
     void playCard(int handIndex);
     void playDraggedCardIfValid(int handIndex);
+    void animateCardToPile(int handIndex, PileKind pileKind);
     void endTurn();
     void finishVictory();
     void hidePotionConfirm();
@@ -80,15 +86,23 @@ private:
     QLabel *playerPortraitLabel;
     QLabel *enemyPortraitLabel;
     QLabel *enemyLabel;
+    QLabel *enemyPreviewDamageLabel;
     QLabel *playerLabel;
     QLabel *logLabel;
+    QProgressBar *playerHealthBar;
+    QProgressBar *enemyHealthBar;
+    QLabel *playerBlockBadge;
+    QLabel *enemyBlockBadge;
+    QWidget *playerStatusPanel;
+    QWidget *enemyStatusPanel;
+    QHBoxLayout *playerStatusLayout;
+    QHBoxLayout *enemyStatusLayout;
     QWidget *potionConfirmPanel;
     QLabel *potionConfirmLabel;
     QFrame *arenaPanel;
     QWidget *handPanel;
     QHBoxLayout *pileButtonLayout;
     QPushButton *endTurnButton;
-    QPushButton *confirmCardButton;
     QPushButton *drawPileButton;
     QPushButton *discardPileButton;
     QPushButton *exhaustPileButton;
@@ -117,10 +131,12 @@ private:
     int enemyPoison = 0;
     int enemyIntentIndex = 0;
     int turnNumber = 0;
-    int selectedCardIndex = -1;
+    int pendingInsertedCards = 0;
+    int hoveredCardIndex = -1;
     int dragCardIndex = -1;
     QPoint dragStartPos;
-    QLabel *dragPreviewLabel = nullptr;
+    QRect dragReturnGeometry;
+    bool draggingCardEntity = false;
     int selectedPotionIndex = -1;
     PotionData selectedPotion;
 };

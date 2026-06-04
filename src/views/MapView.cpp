@@ -29,8 +29,11 @@ QString randomRoomIcon(bool allowRest)
     if (roll < 10) {
         return QStringLiteral("locked-chest.png");
     }
-    if (roll < 70) {
+    if (roll < 45) {
         return QStringLiteral("barbute.png");
+    }
+    if (roll < 70) {
+        return QStringLiteral("circle-64.png");
     }
     if (roll < 80) {
         return QStringLiteral("brute.png");
@@ -57,6 +60,9 @@ EventKind eventKindForIcon(const QString &iconName)
     }
     if (iconName == QStringLiteral("campfire.png")) {
         return EventKind::RestSite;
+    }
+    if (iconName == QStringLiteral("circle-64.png")) {
+        return EventKind::Question;
     }
     if (iconName == QStringLiteral("crowned-skull.png")) {
         return EventKind::FinalBoss;

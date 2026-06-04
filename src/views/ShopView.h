@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "data/RelicData.h"
+#include "data/PotionData.h"
 
 class QLabel;
 class QPushButton;
@@ -28,13 +29,18 @@ signals:
 private:
     void rebuildItems();
     int priceForRelic(const RelicData &relic) const;
+    int priceForPotion(const PotionData &potion) const;
+    int priceForCardRemoval() const;
 
     QLabel *titleLabel;
     QLabel *messageLabel;
     QVBoxLayout *itemsLayout;
     QPushButton *exitButton;
     std::vector<RelicData> saleRelics;
+    std::vector<PotionData> salePotions;
     QStringList boughtRelicIds;
+    QStringList boughtPotionIds;
+    bool cardRemovalBought = false;
 };
 
 #endif // SHOPVIEW_H

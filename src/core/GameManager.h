@@ -15,6 +15,8 @@ public:
     void setCompletedFloor(int floor);
     void addRelic(const QString &relicId);
     void addCard(const QString &cardId);
+    bool upgradeCardAt(int index);
+    bool removeCardAt(int index);
     void addGold(int amount);
     bool addPotion(const QString &potionId);
     bool removePotionAt(int index);
