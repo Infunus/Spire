@@ -10,7 +10,7 @@ struct CardStats
     int cost;               // 打出这张牌消耗的精力。
     int damage;             // 对敌人造成的基础伤害。
     int block;              // 玩家获得的格挡。
-    int heal;               // 玩家回复的精力/生命。
+    int heal;               // 玩家回复的心情。
     int selfDamage;         // 玩家打出此牌时受到的自伤。
     int weak;               // 给予敌人的虚弱层数。
     int vulnerable;         // 给予敌人的易伤层数。
@@ -22,7 +22,7 @@ struct CardStats
 
 namespace Player
 {
-inline int startMaxHp() { return 70; }      // 新开局玩家最大精力/生命。
+inline int startMaxHp() { return 70; }      // 新开局玩家最大心情。
 inline int startCoins() { return 99; }      // 新开局初始资源点。
 inline int maxPotions() { return 3; }       // 药水栏最大容量。
 }
@@ -108,7 +108,7 @@ namespace Potions
 {
 inline int coffeeShotDamage() { return 20; } // 咖啡因冲剂：对敌人造成伤害。
 inline int antiBreakBlock() { return 12; }   // 防破防喷雾：获得格挡。
-inline int clinicSyrupHeal() { return 15; }  // 校医院糖浆：回复生命/精力。
+inline int clinicSyrupHeal() { return 15; }  // 校医院糖浆：回复心情。
 }
 
 namespace EnemyStatus
@@ -125,7 +125,7 @@ inline int normalEnemyTypes() { return 4; } // 普通战斗随机敌人的种类
 
 namespace CampusCultist
 {
-inline int maxHp() { return 42; }       // 绩点传教同学生命。
+inline int maxHp() { return 42; }       // 绩点传教同学任务量。
 inline int firstBuff() { return 3; }    // 第 1 回合强化攻击强度。
 inline int attackA() { return 6; }      // 第 2 回合攻击。
 inline int attackB() { return 6; }      // 第 3 回合攻击。
@@ -133,7 +133,7 @@ inline int attackB() { return 6; }      // 第 3 回合攻击。
 
 namespace HomeworkWorm
 {
-inline int maxHp() { return 48; }       // 高数题面虫生命。
+inline int maxHp() { return 48; }       // 高数题面虫任务量。
 inline int attackA() { return 7; }      // 攻击并格挡行动的攻击值。
 inline int blockA() { return 5; }       // 攻击并格挡行动的格挡值。
 inline int buff() { return 3; }         // 强化行动增加的攻击强度。
@@ -142,7 +142,7 @@ inline int attackB() { return 11; }     // 强化后的攻击。
 
 namespace DdlSlime
 {
-inline int maxHp() { return 36; }       // DDL 史莱姆生命。
+inline int maxHp() { return 36; }       // DDL 史莱姆任务量。
 inline int attackA() { return 8; }      // 第一次攻击。
 inline int block() { return 5; }        // 格挡行动获得的格挡。
 inline int attackB() { return 10; }     // 第二次攻击。
@@ -150,7 +150,7 @@ inline int attackB() { return 10; }     // 第二次攻击。
 
 namespace ProjectNob
 {
-inline int maxHp() { return 74; }       // 程设大作业精英生命。
+inline int maxHp() { return 74; }       // 程设大作业精英任务量。
 inline int attackA() { return 10; }     // 第一次攻击。
 inline int attackB() { return 8; }      // 攻击并强化行动的攻击值。
 inline int buff() { return 2; }         // 攻击并强化行动增加的攻击强度。
@@ -159,7 +159,7 @@ inline int attackC() { return 14; }     // 高压攻击。
 
 namespace FinalExam
 {
-inline int maxHp() { return 110; }      // 期末考试 Boss 生命。
+inline int maxHp() { return 110; }      // 期末考试 Boss 任务量。
 inline int attackA() { return 14; }     // 第一次攻击。
 inline int attackB() { return 10; }     // 攻击并格挡行动的攻击值。
 inline int block() { return 8; }        // 攻击并格挡行动的格挡值。

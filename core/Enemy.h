@@ -134,6 +134,28 @@ public:
         return text;
     }
 
+    QString intentTooltip() const
+    {
+        const EnemyAction action = currentAction();
+        QString rulesText;
+        if (action.type == EnemyActionAttack) {
+            rulesText = GameText::EnemyText::attackIntentRules(effectiveAttackDamage(action.amount));
+        } else if (action.type == EnemyActionHeal) {
+            rulesText = GameText::EnemyText::healIntentRules(action.amount);
+        } else if (action.type == EnemyActionBuff) {
+            rulesText = GameText::EnemyText::buffIntentRules(action.amount);
+        } else if (action.type == EnemyActionBlock) {
+            rulesText = GameText::EnemyText::blockIntentRules(action.amount);
+        } else if (action.type == EnemyActionAttackAndBuff) {
+            rulesText = GameText::EnemyText::attackAndBuffIntentRules(effectiveAttackDamage(action.amount),
+                                                                      action.extra);
+        } else {
+            rulesText = GameText::EnemyText::attackAndBlockIntentRules(effectiveAttackDamage(action.amount),
+                                                                       action.extra);
+        }
+        return GameText::Battle::intentTooltip(intentText(), rulesText);
+    }
+
     int attackPlayer()
     {
         const EnemyAction action = currentAction();

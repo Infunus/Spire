@@ -480,10 +480,9 @@ QWidget *MainWindow::createEventPreviewPage(bool fromMap)
 
     m_eventWidget->setChoiceHandler([this, fromMap](int choiceIndex, const RandomEventChoice &choice) {
         Q_UNUSED(choiceIndex);
-        Q_UNUSED(choice);
-        // 后续如果要接真实事件效果，就在这里按 choice.effectType 分支处理。
         // 事件内容本身请优先写在 core/EventLibrary.h。
         if (fromMap) {
+            EventLibrary::applyChoiceEffect(choice);
             GameState::instance().recordEventFinished();
             finishMapNode(true);
         } else {

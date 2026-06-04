@@ -86,13 +86,29 @@ namespace GameText
         inline QString battleWinFormat() { return QStringLiteral("胜利 · 击败 %1 个敌人"); }
         inline QString battleFailTitle() { return QStringLiteral("喜报：您已被退学！"); }
         inline QString victoryTip() { return QStringLiteral("完成作业！助教正在批阅……"); }
-        inline QString failTip() { return QStringLiteral("精力归零，本次修读失败。"); }
+        inline QString failTip() { return QStringLiteral("心情归零，本次修读失败。"); }
 
-        inline QString hpFormat() { return QStringLiteral("HP %1/%2"); }
-        inline QString strengthLabelFormat() { return QStringLiteral("专注度 +%1"); }
+        inline QString playerHpFormat() { return QStringLiteral("心情 %1/%2"); }
+        inline QString enemyHpFormat() { return QStringLiteral("任务量 %1/%2"); }
+        inline QString hpFormat() { return enemyHpFormat(); } // 旧接口，后续优先用 playerHpFormat / enemyHpFormat。
+        inline QString strengthLabelFormat() { return QStringLiteral("效率值 +%1"); }
         inline QString playerInfoFormat()
         {
-            return QStringLiteral("回合 %1  |  精力 %2/%3  |  专注度 +%4");
+            return QStringLiteral("回合 %1  |  精力 %2/%3  |  效率值 +%4");
+        }
+
+        inline QString playerBlockStatusName() { return QStringLiteral("抗压值"); }
+        inline QString playerBlockStatusRules() { return QStringLiteral("格挡：先抵消敌人造成的心情损失。"); }
+        inline QString playerStrengthStatusName() { return QStringLiteral("效率值"); }
+        inline QString playerStrengthStatusShort() { return QStringLiteral("效"); }
+        inline QString playerStrengthStatusRules() { return QStringLiteral("力量：你的攻击牌造成的任务量增加。"); }
+        inline QString statusTooltip(const QString &name, int value, const QString &rulesText)
+        {
+            return QStringLiteral("%1 x%2\n%3").arg(name).arg(value).arg(rulesText);
+        }
+        inline QString intentTooltip(const QString &intentText, const QString &rulesText)
+        {
+            return QStringLiteral("%1\n%2").arg(intentText, rulesText);
         }
 
         inline QString drawPileButtonFormat() { return QStringLiteral("抽牌堆 %1"); }
@@ -102,6 +118,10 @@ namespace GameText
         inline QString exhaustTag() { return QStringLiteral("消耗"); }
 
         inline QString potionEmptyText() { return QStringLiteral("空"); }
+        inline QString potionUseTooltip(const QString &description)
+        {
+            return QStringLiteral("%1\n拖动到目标使用").arg(description);
+        }
         inline QString handTipText() { return QStringLiteral("拖动卡牌到敌人身上出牌。"); }
         inline QString selectedCardTipFormat() { return QStringLiteral("已选择：%1"); }
     }
@@ -112,20 +132,20 @@ namespace GameText
         inline QString buttonTextFormat() { return QStringLiteral("%1\n费用 %2\n%3"); }
         inline QString upgradedNameFormat() { return QStringLiteral("%1+"); }
 
-        inline QString strikeName() { return QStringLiteral("写作业"); }
-        inline QString strikeDescription(int damage) { return QStringLiteral("造成 %1 点伤害").arg(damage); }
+        inline QString strikeName() { return QStringLiteral("与作业战斗！"); }
+        inline QString strikeDescription(int damage) { return QStringLiteral("完成 %1 点任务量").arg(damage); }
         inline QString strikeDescription() { return strikeDescription(GameBalance::Cards::strike().damage); }
         inline QString strikeImage() { return QString(); }
 
-        inline QString defendName() { return QStringLiteral("刷b站"); }
+        inline QString defendName() { return QStringLiteral("刷会儿b站"); }
         inline QString defendDescription(int block) { return QStringLiteral("获得 %1 点抗压值").arg(block); }
         inline QString defendDescription() { return defendDescription(GameBalance::Cards::defend().block); }
         inline QString defendImage() { return QString(); }
 
-        inline QString bashName() { return QStringLiteral("当堂点名"); }
+        inline QString bashName() { return QStringLiteral("这题我见过！"); }
         inline QString bashDescription(int damage, int vulnerable)
         {
-            return QStringLiteral("造成 %1 点伤害\n给予 %2 层易伤").arg(damage).arg(vulnerable);
+            return QStringLiteral("完成 %1 点任务量\n给予 %2 层思路突破").arg(damage).arg(vulnerable);
         }
         inline QString bashDescription()
         {
@@ -133,10 +153,10 @@ namespace GameText
         }
         inline QString bashImage() { return QString(); }
 
-        inline QString inflameName() { return QStringLiteral("鸡血动员"); }
+        inline QString inflameName() { return QStringLiteral("思路打开"); }
         inline QString inflameDescription(int strengthGain)
         {
-            return QStringLiteral("本场战斗攻击强度 +%1").arg(strengthGain);
+            return QStringLiteral("本场战斗效率值 +%1").arg(strengthGain);
         }
         inline QString inflameDescription()
         {
@@ -144,10 +164,10 @@ namespace GameText
         }
         inline QString inflameImage() { return QString(); }
 
-        inline QString heavyBladeName() { return QStringLiteral("大题重击"); }
+        inline QString heavyBladeName() { return QStringLiteral("这就是心流？"); }
         inline QString heavyBladeDescription(int damage, int strengthMultiplier)
         {
-            return QStringLiteral("造成 %1 点伤害\n攻击强度加成按 %2 倍计算")
+            return QStringLiteral("完成 %1 点任务量\n效率值加成按 %2 倍计算")
                 .arg(damage)
                 .arg(strengthMultiplier);
         }
@@ -158,10 +178,10 @@ namespace GameText
         }
         inline QString heavyBladeImage() { return QString(); }
 
-        inline QString pommelName() { return QStringLiteral("边写边想"); }
+        inline QString pommelName() { return QStringLiteral("我觉得我会了"); }
         inline QString pommelDescription(int damage, int draw)
         {
-            return QStringLiteral("造成 %1 点伤害\n抽 %2 张牌").arg(damage).arg(draw);
+            return QStringLiteral("完成 %1 点任务量\n抽 %2 张牌").arg(damage).arg(draw);
         }
         inline QString pommelDescription()
         {
@@ -169,10 +189,10 @@ namespace GameText
         }
         inline QString pommelImage() { return QString(); }
 
-        inline QString shrugName() { return QStringLiteral("缓口气"); }
+        inline QString shrugName() { return QStringLiteral("原神，启动！"); }
         inline QString shrugDescription(int block, int draw)
         {
-            return QStringLiteral("获得 %1 点格挡\n抽 %2 张牌").arg(block).arg(draw);
+            return QStringLiteral("获得 %1 点抗压值\n抽 %2 张牌").arg(block).arg(draw);
         }
         inline QString shrugDescription()
         {
@@ -180,18 +200,18 @@ namespace GameText
         }
         inline QString shrugImage() { return QString(); }
 
-        inline QString angerName() { return QStringLiteral("灵感速写"); }
+        inline QString angerName() { return QStringLiteral("灵感，稍纵即逝！"); }
         inline QString angerDescription(int damage)
         {
-            return QStringLiteral("造成 %1 点伤害\n费用为 0").arg(damage);
+            return QStringLiteral("完成 %1 点任务量\n不消耗精力").arg(damage);
         }
         inline QString angerDescription() { return angerDescription(GameBalance::Cards::anger().damage); }
         inline QString angerImage() { return QString(); }
 
-        inline QString flexName() { return QStringLiteral("临时鸡血"); }
+        inline QString flexName() { return QStringLiteral("来根士力架！"); }
         inline QString flexDescription(int strengthGain, int draw)
         {
-            return QStringLiteral("本场战斗攻击强度 +%1\n抽 %2 张牌").arg(strengthGain).arg(draw);
+            return QStringLiteral("本场战斗效率值 +%1\n抽 %2 张牌").arg(strengthGain).arg(draw);
         }
         inline QString flexDescription()
         {
@@ -199,8 +219,8 @@ namespace GameText
         }
         inline QString flexImage() { return QString(); }
 
-        inline QString cleaveName() { return QStringLiteral("知识点横扫"); }
-        inline QString cleaveDescription(int damage) { return QStringLiteral("造成 %1 点伤害").arg(damage); }
+        inline QString cleaveName() { return QStringLiteral("今晚必拿下"); }
+        inline QString cleaveDescription(int damage) { return QStringLiteral("完成 %1 点任务量").arg(damage); }
         inline QString cleaveDescription() { return cleaveDescription(GameBalance::Cards::cleave().damage); }
         inline QString cleaveImage() { return QString(); }
     }
@@ -208,46 +228,87 @@ namespace GameText
     // 敌人文本和图片路径。
     namespace EnemyText
     {
-        inline QString attackIntentFormat() { return QStringLiteral("攻击 %1"); }
-        inline QString healIntentFormat() { return QStringLiteral("回复 %1 HP"); }
-        inline QString buffIntentFormat() { return QStringLiteral("卷起来，攻击 +%1"); }
-        inline QString blockIntentFormat() { return QStringLiteral("获得 %1 格挡"); }
-        inline QString attackAndBuffIntentFormat() { return QStringLiteral("攻击 %1，攻击 +%2"); }
-        inline QString attackAndBlockIntentFormat() { return QStringLiteral("攻击 %1，获得 %2 格挡"); }
+        inline QString attackIntentFormat() { return QStringLiteral("破坏心情 %1"); }
+        inline QString healIntentFormat() { return QStringLiteral("回复 %1 任务量"); }
+        inline QString buffIntentFormat() { return QStringLiteral("压力值 +%1"); }
+        inline QString blockIntentFormat() { return QStringLiteral("增加 %1 复杂度"); }
+        inline QString attackAndBuffIntentFormat() { return QStringLiteral("破坏心情 %1，压力值 +%2"); }
+        inline QString attackAndBlockIntentFormat() { return QStringLiteral("破坏心情 %1，增加 %2 复杂度"); }
 
-        inline QString weakStatusFormat() { return QStringLiteral("虚弱%1"); }
-        inline QString vulnerableStatusFormat() { return QStringLiteral("易伤%1"); }
-        inline QString strengthStatusFormat() { return QStringLiteral("强度+%1"); }
-        inline QString blockStatusFormat() { return QStringLiteral("格挡%1"); }
+        inline QString attackIntentRules(int damage)
+        {
+            return QStringLiteral("攻击：敌人行动时会让玩家失去 %1 点心情。").arg(damage);
+        }
+        inline QString healIntentRules(int amount)
+        {
+            return QStringLiteral("回复：敌人行动时恢复 %1 点任务量。").arg(amount);
+        }
+        inline QString buffIntentRules(int amount)
+        {
+            return QStringLiteral("力量：敌人后续攻击伤害增加 %1。").arg(amount);
+        }
+        inline QString blockIntentRules(int amount)
+        {
+            return QStringLiteral("格挡：敌人行动时获得 %1 点护甲，先抵消受到的任务量。").arg(amount);
+        }
+        inline QString attackAndBuffIntentRules(int damage, int strength)
+        {
+            return QStringLiteral("攻击 + 力量：先让玩家失去 %1 点心情，再让后续攻击伤害增加 %2。")
+                .arg(damage)
+                .arg(strength);
+        }
+        inline QString attackAndBlockIntentRules(int damage, int block)
+        {
+            return QStringLiteral("攻击 + 格挡：先让玩家失去 %1 点心情，再获得 %2 点护甲。")
+                .arg(damage)
+                .arg(block);
+        }
+
+        inline QString weakStatusName() { return QStringLiteral("疲劳"); }
+        inline QString weakStatusShort() { return QStringLiteral("疲"); }
+        inline QString weakStatusRules() { return QStringLiteral("虚弱：攻击造成的伤害降低。"); }
+        inline QString vulnerableStatusName() { return QStringLiteral("破防"); }
+        inline QString vulnerableStatusShort() { return QStringLiteral("破"); }
+        inline QString vulnerableStatusRules() { return QStringLiteral("易伤：受到的伤害提高约 50%。"); }
+        inline QString strengthStatusName() { return QStringLiteral("压力值"); }
+        inline QString strengthStatusShort() { return QStringLiteral("压"); }
+        inline QString strengthStatusRules() { return QStringLiteral("力量：后续攻击伤害增加。"); }
+        inline QString blockStatusName() { return QStringLiteral("复杂度"); }
+        inline QString blockStatusRules() { return QStringLiteral("格挡：先抵消受到的任务量。"); }
+
+        inline QString weakStatusFormat() { return weakStatusName() + QStringLiteral("%1"); }
+        inline QString vulnerableStatusFormat() { return vulnerableStatusName() + QStringLiteral("%1"); }
+        inline QString strengthStatusFormat() { return strengthStatusName() + QStringLiteral("+%1"); }
+        inline QString blockStatusFormat() { return blockStatusName() + QStringLiteral("%1"); }
         inline QString statusSeparator() { return QStringLiteral(" | "); }
         inline QString statusJoiner() { return QStringLiteral(" "); }
 
-        inline QString campusCultistName() { return QStringLiteral("绩点传教同学"); }
-        inline QString campusCultistDescription() { return QStringLiteral("先给自己打鸡血，之后连续攻击。"); }
+        inline QString campusCultistName() { return QStringLiteral("高数作业"); }
+        inline QString campusCultistDescription() { return QStringLiteral("数学不会那就是真不会"); }
         inline QString campusCultistImage() { return QString(); }
 
-        inline QString homeworkWormName() { return QStringLiteral("高数题面虫"); }
+        inline QString homeworkWormName() { return QStringLiteral("POJ习题"); }
         inline QString homeworkWormDescription()
         {
-            return QStringLiteral("会一边进攻一边堆格挡，适合作为普通敌人的压力测试。");
+            return QStringLiteral("邪恶的编程题！");
         }
         inline QString homeworkWormImage() { return QString(); }
 
-        inline QString ddlSlimeName() { return QStringLiteral("DDL 史莱姆"); }
+        inline QString ddlSlimeName() { return QStringLiteral("水课作业"); }
         inline QString ddlSlimeDescription()
         {
-            return QStringLiteral("低血量普通敌人，会在攻击间隙获得格挡。");
+            return QStringLiteral("水课还是好糊弄的");
         }
         inline QString ddlSlimeImage() { return QString(); }
 
-        inline QString projectNobName() { return QStringLiteral("程设大作业精英"); }
-        inline QString projectNobDescription() { return QStringLiteral("精英敌人，攻击会越拖越痛。"); }
+        inline QString projectNobName() { return QStringLiteral("小组汇报"); }
+        inline QString projectNobDescription() { return QStringLiteral("“所以我们的主题选什么好呢……？”“谁会做PPT？”“交给AI算了……”“……我不上台讲，别的都好说”“诶？大家怎么都做完了，记得把我名字加上去”……"); }
         inline QString projectNobImage() { return QString(); }
 
         inline QString finalExamName() { return QStringLiteral("期末考试"); }
         inline QString finalExamDescription()
         {
-            return QStringLiteral("最终 Boss，攻击、格挡和强化都会出现。");
+            return QStringLiteral("不调分！！");
         }
         inline QString finalExamImage() { return QString(); }
     }
@@ -275,7 +336,7 @@ namespace GameText
             return QStringLiteral("这里是随机事件正文占位。后续可以改成图书馆、理教、宿舍、食堂、未名湖等主题事件。");
         }
         inline QString previewChoiceA() { return QStringLiteral("继续自习，获得一张学习牌"); }
-        inline QString previewChoiceB() { return QStringLiteral("回宿舍休息，回复少量 HP"); }
+        inline QString previewChoiceB() { return QStringLiteral("回宿舍休息，回复少量心情"); }
         inline QString previewChoiceC() { return QStringLiteral("去便利店补给，获得临时资源"); }
     }
 
@@ -285,7 +346,7 @@ namespace GameText
         inline QString yanyuanMealCardName() { return QStringLiteral("燕园饭卡"); }
         inline QString yanyuanMealCardDescription(int heal)
         {
-            return QStringLiteral("战斗胜利后回复 %1 点精力。").arg(heal);
+            return QStringLiteral("战斗胜利后回复 %1 点心情。").arg(heal);
         }
         inline QString yanyuanMealCardDescription()
         {
@@ -366,7 +427,7 @@ namespace GameText
         inline QString clinicSyrupName() { return QStringLiteral("校医院糖浆"); }
         inline QString clinicSyrupDescription(int heal)
         {
-            return QStringLiteral("回复 %1 点精力。").arg(heal);
+            return QStringLiteral("回复 %1 点心情。").arg(heal);
         }
         inline QString clinicSyrupDescription()
         {
@@ -484,7 +545,7 @@ namespace GameText
         inline QString restTitle() { return QStringLiteral("休息点"); }
         inline QString restBody()
         {
-            return QStringLiteral("休息 UI 尚未实现。后续这里提供回血、升级卡牌等选项。");
+            return QStringLiteral("休息 UI 尚未实现。后续这里提供回复心情、升级卡牌等选项。");
         }
     }
 

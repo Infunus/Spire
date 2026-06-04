@@ -35,6 +35,58 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
+namespace
+{
+QString battleStatusShortText(const QString &name)
+{
+    if (name == GameText::Battle::playerStrengthStatusName()) {
+        return GameText::Battle::playerStrengthStatusShort();
+    }
+    if (name == GameText::EnemyText::weakStatusName()) {
+        return GameText::EnemyText::weakStatusShort();
+    }
+    if (name == GameText::EnemyText::vulnerableStatusName()) {
+        return GameText::EnemyText::vulnerableStatusShort();
+    }
+    if (name == GameText::EnemyText::strengthStatusName()) {
+        return GameText::EnemyText::strengthStatusShort();
+    }
+    return name.left(1);
+}
+
+QString battleStatusRulesText(const QString &name)
+{
+    if (name == GameText::Battle::playerStrengthStatusName()) {
+        return GameText::Battle::playerStrengthStatusRules();
+    }
+    if (name == GameText::EnemyText::weakStatusName()) {
+        return GameText::EnemyText::weakStatusRules();
+    }
+    if (name == GameText::EnemyText::vulnerableStatusName()) {
+        return GameText::EnemyText::vulnerableStatusRules();
+    }
+    if (name == GameText::EnemyText::strengthStatusName()) {
+        return GameText::EnemyText::strengthStatusRules();
+    }
+    if (name == GameText::EnemyText::blockStatusName()) {
+        return GameText::EnemyText::blockStatusRules();
+    }
+    if (name == GameText::Battle::playerBlockStatusName()) {
+        return GameText::Battle::playerBlockStatusRules();
+    }
+    return QString();
+}
+
+QString battleStatusToolTip(const QString &name, int value)
+{
+    const QString rulesText = battleStatusRulesText(name);
+    if (rulesText.isEmpty()) {
+        return QStringLiteral("%1 x%2").arg(name).arg(value);
+    }
+    return GameText::Battle::statusTooltip(name, value, rulesText);
+}
+}
+
 class BattleCardButton : public QPushButton
 {
 public:
@@ -321,10 +373,14 @@ public:
 
         m_healthBar->setRange(0, enemy.maxHp());
         m_healthBar->setValue(qBound(0, enemy.hp(), enemy.maxHp()));
-        m_healthBar->setFormat(GameText::Battle::hpFormat().arg(qMax(0, enemy.hp())).arg(enemy.maxHp()));
+        m_healthBar->setFormat(GameText::Battle::enemyHpFormat().arg(qMax(0, enemy.hp())).arg(enemy.maxHp()));
         m_blockBadge->setText(QString::number(enemy.block()));
         m_blockBadge->setVisible(enemy.block() > 0);
+        m_blockBadge->setToolTip(enemy.block() > 0
+                                     ? battleStatusToolTip(GameText::EnemyText::blockStatusName(), enemy.block())
+                                     : QString());
         m_intentLabel->setText(QStringLiteral("%1\n%2").arg(enemy.name(), enemy.intentText()));
+        m_intentLabel->setToolTip(enemy.intentTooltip());
 
         rebuildStatuses(enemy);
         setVisible(!enemy.isDead());
@@ -340,20 +396,23 @@ private:
 
         QList<QPair<QString, int>> statuses;
         if (enemy.weakStacks() > 0) {
-            statuses << qMakePair(QStringLiteral("虚弱"), enemy.weakStacks());
+            statuses << qMakePair(GameText::EnemyText::weakStatusName(), enemy.weakStacks());
         }
         if (enemy.vulnerableStacks() > 0) {
-            statuses << qMakePair(QStringLiteral("易伤"), enemy.vulnerableStacks());
+            statuses << qMakePair(GameText::EnemyText::vulnerableStatusName(), enemy.vulnerableStacks());
         }
         if (enemy.strength() > 0) {
-            statuses << qMakePair(QStringLiteral("强度"), enemy.strength());
+            statuses << qMakePair(GameText::EnemyText::strengthStatusName(), enemy.strength());
         }
 
         for (const QPair<QString, int> &status : statuses) {
-            QLabel *icon = new QLabel(QStringLiteral("%1\n%2").arg(status.first.left(1)).arg(status.second), m_statusPanel);
+            QLabel *icon = new QLabel(QStringLiteral("%1\n%2")
+                                          .arg(battleStatusShortText(status.first))
+                                          .arg(status.second),
+                                      m_statusPanel);
             icon->setFixedSize(34, 34);
             icon->setAlignment(Qt::AlignCenter);
-            icon->setToolTip(QStringLiteral("%1 x%2").arg(status.first).arg(status.second));
+            icon->setToolTip(battleStatusToolTip(status.first, status.second));
             icon->setStyleSheet(
                 "QLabel { background: #8f5bd1; border: 2px solid rgba(255,255,255,175);"
                 "border-radius: 17px; color: white; font-size: 11px; font-weight: 900; padding: 0px; }");
@@ -1067,15 +1126,18 @@ void BattleWidget::refreshUi()
 {
     m_playerHealthBar->setRange(0, m_playerMaxHp);
     m_playerHealthBar->setValue(qBound(0, m_playerHp, m_playerMaxHp));
-    m_playerHealthBar->setFormat(GameText::Battle::hpFormat().arg(qMax(0, m_playerHp)).arg(m_playerMaxHp));
+    m_playerHealthBar->setFormat(GameText::Battle::playerHpFormat().arg(qMax(0, m_playerHp)).arg(m_playerMaxHp));
 
     m_playerBlockBadge->setText(QString::number(m_playerBlock));
     m_playerBlockBadge->setVisible(m_playerBlock > 0);
+    m_playerBlockBadge->setToolTip(m_playerBlock > 0
+                                       ? battleStatusToolTip(GameText::Battle::playerBlockStatusName(), m_playerBlock)
+                                       : QString());
     m_energyCrystalWidget->setEnergy(m_energy, m_maxEnergy);
 
     QList<QPair<QString, int>> playerStatuses;
     if (m_playerStrength > 0) {
-        playerStatuses << qMakePair(QStringLiteral("强度"), m_playerStrength);
+        playerStatuses << qMakePair(GameText::Battle::playerStrengthStatusName(), m_playerStrength);
     }
     rebuildStatusIcons(m_playerStatusLayout, playerStatuses);
 
@@ -1261,7 +1323,7 @@ void BattleWidget::refreshPotionSlots()
 
         const PotionData potion = potions.at(i);
         button->setText(potion.name);
-        button->setToolTip(QStringLiteral("%1\n拖动到目标使用").arg(potion.description));
+        button->setToolTip(GameText::Battle::potionUseTooltip(potion.description));
         button->setEnabled(!m_battleEnded && m_playerTurn);
         button->setStyleSheet("background: rgba(45, 76, 92, 205); border: 1px solid rgba(178, 225, 240, 150); border-radius: 8px; color: #effcff; font-size: 12px; font-weight: 800;");
     }
@@ -1278,11 +1340,13 @@ void BattleWidget::rebuildStatusIcons(QHBoxLayout *layout, const QList<QPair<QSt
 {
     clearStatusLayout(layout);
     for (const QPair<QString, int> &status : statuses) {
-        QLabel *icon = new QLabel(QStringLiteral("%1\n%2").arg(status.first.left(1)).arg(status.second),
+        QLabel *icon = new QLabel(QStringLiteral("%1\n%2")
+                                      .arg(battleStatusShortText(status.first))
+                                      .arg(status.second),
                                   layout->parentWidget());
         icon->setFixedSize(34, 34);
         icon->setAlignment(Qt::AlignCenter);
-        icon->setToolTip(QStringLiteral("%1 x%2").arg(status.first).arg(status.second));
+        icon->setToolTip(battleStatusToolTip(status.first, status.second));
         icon->setStyleSheet(
             "QLabel {"
             "  background: #8f5bd1;"
