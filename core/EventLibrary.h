@@ -2,9 +2,9 @@
 #define EVENTLIBRARY_H
 
 #include "GameText.h"
+#include "GameRandom.h"
 
 #include <QList>
-#include <QRandomGenerator>
 #include <QString>
 #include <QStringList>
 
@@ -169,7 +169,7 @@ inline RandomEventData randomEvent()
     if (events.isEmpty()) {
         return RandomEventData();
     }
-    return events.at(QRandomGenerator::global()->bounded(events.size()));
+    return events.at(GameRandom::instance().bounded(events.size()));
 }
 }
 

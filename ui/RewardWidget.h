@@ -3,6 +3,7 @@
 
 #include "../core/CardLibrary.h"
 #include "../core/GameBalance.h"
+#include "../core/GameRandom.h"
 #include "../core/GameState.h"
 #include "../core/GameText.h"
 #include "../core/Potion.h"
@@ -13,7 +14,6 @@
 #include <QLayoutItem>
 #include <QList>
 #include <QPushButton>
-#include <QRandomGenerator>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -83,7 +83,7 @@ public:
         m_choices.clear();
         QList<Card> pool = CardLibrary::shopCards();
         while (!pool.isEmpty() && m_choices.size() < GameBalance::Rewards::cardChoices()) {
-            const int index = QRandomGenerator::global()->bounded(pool.size());
+            const int index = GameRandom::instance().bounded(pool.size());
             m_choices.append(pool.takeAt(index));
         }
         rebuildCardChoices();

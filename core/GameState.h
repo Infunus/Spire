@@ -3,6 +3,7 @@
 
 #include "CardLibrary.h"
 #include "GameBalance.h"
+#include "GameRandom.h"
 #include "Potion.h"
 #include "Relic.h"
 
@@ -32,8 +33,15 @@ public:
 
     void resetForNewRun()
     {
+        resetForNewRunWithSeed(GameRandom::instance().createRandomSeed());
+    }
+
+    void resetForNewRunWithSeed(quint32 seed)
+    {
         m_maxHp = GameBalance::Player::startMaxHp();
         m_hp = m_maxHp;
+        m_runSeed = seed == 0 ? 1 : seed;
+        GameRandom::instance().setSeed(m_runSeed);
         m_gradeScore = 0;
         m_credits = 0;
         m_coins = GameBalance::Player::startCoins();
@@ -55,6 +63,7 @@ public:
     int gradeScore() const { return m_gradeScore; }
     int credits() const { return m_credits; }
     int coins() const { return m_coins; }
+    quint32 runSeed() const { return m_runSeed; }
     int currentFloor() const { return m_currentFloor; }
     MapNodeType currentNodeType() const { return m_currentNodeType; }
     int defeatedEnemies() const { return m_defeatedEnemies; }
@@ -302,6 +311,7 @@ private:
           m_gradeScore(0),
           m_credits(0),
           m_coins(GameBalance::Player::startCoins()),
+          m_runSeed(1),
           m_currentFloor(0),
           m_currentNodeType(MapNodeType::None),
           m_defeatedEnemies(0),
@@ -318,6 +328,7 @@ private:
     int m_gradeScore;
     int m_credits;
     int m_coins;
+    quint32 m_runSeed;
     int m_currentFloor;
     MapNodeType m_currentNodeType;
     int m_defeatedEnemies;

@@ -1,6 +1,7 @@
 #include "BattleWidget.h"
 #include "../core/CardLibrary.h"
 #include "../core/GameBalance.h"
+#include "../core/GameRandom.h"
 #include "../core/GameState.h"
 #include "../core/GameText.h"
 #include "../core/Relic.h"
@@ -24,7 +25,6 @@
 #include <QPixmap>
 #include <QProgressBar>
 #include <QPropertyAnimation>
-#include <QRandomGenerator>
 #include <QResizeEvent>
 #include <QSizePolicy>
 #include <QStringList>
@@ -1835,7 +1835,7 @@ QList<Enemy> BattleWidget::createEnemiesForBattle() const
         return enemies;
     }
 
-    const int roll = QRandomGenerator::global()->bounded(GameBalance::Enemies::normalEnemyTypes());
+    const int roll = GameRandom::instance().bounded(GameBalance::Enemies::normalEnemyTypes());
     if (roll == 0) {
         enemies << Enemy::createCampusCultist();
     } else if (roll == 1) {

@@ -3,9 +3,9 @@
 
 #include "Card.h"
 #include "GameBalance.h"
+#include "GameRandom.h"
 
 #include <QList>
-#include <QRandomGenerator>
 #include <QStringList>
 #include <QtGlobal>
 
@@ -108,7 +108,7 @@ private:
     void shuffle(QList<Card> &cards)
     {
         for (int i = cards.size() - 1; i > 0; --i) {
-            const int j = QRandomGenerator::global()->bounded(i + 1);
+            const int j = GameRandom::instance().bounded(i + 1);
             qSwap(cards[i], cards[j]);
         }
     }

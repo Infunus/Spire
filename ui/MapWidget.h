@@ -3,6 +3,7 @@
 
 #include "../core/GameState.h"
 #include "../core/GameBalance.h"
+#include "../core/GameRandom.h"
 #include "../core/GameText.h"
 
 #include <QColor>
@@ -11,7 +12,6 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
-#include <QRandomGenerator>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -288,7 +288,7 @@ private:
             return MapNodeType::Rest;
         }
 
-        const int roll = QRandomGenerator::global()->bounded(GameBalance::Map::randomRollMax());
+        const int roll = GameRandom::instance().bounded(GameBalance::Map::randomRollMax());
         if (roll < GameBalance::Map::battleThreshold()) {
             return MapNodeType::Battle;
         }
