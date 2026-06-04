@@ -4,7 +4,10 @@
 #include <QWidget>
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <unordered_map>
 #include <vector>
+
+#include "data/EventData.h"
 
 class MapNode;
 class QResizeEvent;
@@ -19,9 +22,12 @@ class MapView : public QWidget
 public:
     explicit MapView(QWidget *parent = nullptr);
     QSize minimumSizeHint() const override;
+    void resetMap();
+    void completeCurrentNode();
 
 signals:
     void nodeActivated(int nodeId);
+    void eventActivated(EventKind eventKind);
     void floorChanged(int floor);
 
 private slots:
@@ -37,19 +43,19 @@ private:
     MapNode* addNode(int id, const QPointF &pos, const QPixmap &icon = QPixmap(), qreal radius = 28.8);
     QPixmap loadPicture(const QString &fileName) const;
     void makeLayerAvailable(int layerIndex);
-    void clearHintLines();
-    void clearRouteLines();
-    void drawHintLines(MapNode *fromNode, int nextLayerIndex);
-    void drawRouteLine(MapNode *fromNode, MapNode *toNode);
+    void clearConnectionLines();
+    void drawConnections(MapNode *fromNode, int nextLayerIndex);
 
     QGraphicsView *view;
     QGraphicsScene *scene;
     QGraphicsPixmapItem *backgroundItem = nullptr;
     std::vector<MapNode*> nodes;
     std::vector<std::vector<MapNode*>> layers;
-    std::vector<QGraphicsLineItem*> hintLines;
-    std::vector<QGraphicsLineItem*> routeLines;
+    std::unordered_map<int, EventKind> nodeEvents;
+    std::vector<QGraphicsLineItem*> connectionLines;
     MapNode *previousSelectedNode = nullptr;
+    MapNode *pendingSelectedNode = nullptr;
+    int pendingLayerIndex = -1;
     int currentLayerIndex = 0;
 };
 

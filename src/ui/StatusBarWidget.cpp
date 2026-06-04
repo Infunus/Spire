@@ -4,6 +4,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -14,7 +15,7 @@ RelicIconWidget::RelicIconWidget(QWidget *parent)
     , color(QColor(180, 170, 130))
 {
     setFixedSize(30, 30);
-    setAttribute(Qt::WA_TransparentForMouseEvents);
+    setMouseTracking(true);
 }
 
 void RelicIconWidget::setIcon(const QPixmap &pixmap)
@@ -27,6 +28,20 @@ void RelicIconWidget::setColor(const QColor &value)
 {
     color = value;
     update();
+}
+
+void RelicIconWidget::setRelic(const RelicData &relic)
+{
+    icon = relic.iconPath.isEmpty() ? QPixmap() : QPixmap(relic.iconPath);
+    setPopupText(relic.name, relic.effect);
+    update();
+}
+
+void RelicIconWidget::setPopupText(const QString &title, const QString &description)
+{
+    popupTitle = title;
+    popupDescription = description;
+    setToolTip(QStringLiteral("%1\n%2").arg(title, description));
 }
 
 void RelicIconWidget::paintEvent(QPaintEvent *event)
@@ -48,6 +63,14 @@ void RelicIconWidget::paintEvent(QPaintEvent *event)
     painter.drawEllipse(rect().adjusted(3, 3, -3, -3));
 }
 
+void RelicIconWidget::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && (!popupTitle.isEmpty() || !popupDescription.isEmpty())) {
+        emit clicked(popupTitle, popupDescription);
+    }
+    QWidget::mousePressEvent(event);
+}
+
 StatusBarWidget::StatusBarWidget(QWidget *parent)
     : QWidget(parent)
     , healthLabel(nullptr)
@@ -55,6 +78,8 @@ StatusBarWidget::StatusBarWidget(QWidget *parent)
     , characterLabel(nullptr)
     , goldLabel(nullptr)
     , potionsLabel(nullptr)
+    , potionPanel(new QWidget(this))
+    , potionLayout(new QGridLayout(potionPanel))
     , mapButton(nullptr)
     , deckButton(nullptr)
     , settingsButton(nullptr)
@@ -87,21 +112,27 @@ StatusBarWidget::StatusBarWidget(QWidget *parent)
     topLayout->setSpacing(12);
 
     healthLabel = createStatusLabel(QStringLiteral("HP"), QStringLiteral("80/80"), QColor(190, 50, 48));
-    floorLabel = createStatusLabel(QString::fromUtf8("层数"), QStringLiteral("1"), QColor(80, 150, 220));
-    characterLabel = createStatusLabel(QString::fromUtf8("角色"), QString::fromUtf8("铁甲战士"), QColor(150, 90, 210));
-    goldLabel = createStatusLabel(QString::fromUtf8("金币"), QStringLiteral("99"), QColor(220, 175, 60));
-    potionsLabel = createStatusLabel(QString::fromUtf8("药水"), QStringLiteral("3"), QColor(70, 190, 160));
+    floorLabel = createStatusLabel(QString::fromUtf8(u8"层数"), QStringLiteral("0"), QColor(80, 150, 220));
+    characterLabel = createStatusLabel(QString::fromUtf8(u8"角色"), QString::fromUtf8(u8"铁甲战士"), QColor(150, 90, 210));
+    goldLabel = createStatusLabel(QString::fromUtf8(u8"金币"), QStringLiteral("99"), QColor(220, 175, 60));
+    potionsLabel = createStatusLabel(QString::fromUtf8(u8"药水"), QStringLiteral("0/3"), QColor(70, 190, 160));
 
     topLayout->addWidget(healthLabel);
     topLayout->addWidget(floorLabel);
     topLayout->addWidget(characterLabel);
     topLayout->addWidget(goldLabel);
     topLayout->addWidget(potionsLabel);
+
+    potionPanel->setAttribute(Qt::WA_StyledBackground, true);
+    potionPanel->setStyleSheet("background: transparent;");
+    potionLayout->setContentsMargins(0, 0, 0, 0);
+    potionLayout->setHorizontalSpacing(4);
+    topLayout->addWidget(potionPanel);
     topLayout->addStretch();
 
-    mapButton = createToolButton(QString::fromUtf8("地图"), QColor(65, 120, 185));
-    deckButton = createToolButton(QString::fromUtf8("卡组"), QColor(110, 90, 185));
-    settingsButton = createToolButton(QString::fromUtf8("设置"), QColor(105, 110, 120));
+    mapButton = createToolButton(QString::fromUtf8(u8"地图"), QColor(65, 120, 185));
+    deckButton = createToolButton(QString::fromUtf8(u8"卡组"), QColor(110, 90, 185));
+    settingsButton = createToolButton(QString::fromUtf8(u8"设置"), QColor(105, 110, 120));
 
     topLayout->addWidget(mapButton);
     topLayout->addWidget(deckButton);
@@ -120,7 +151,8 @@ StatusBarWidget::StatusBarWidget(QWidget *parent)
     rootLayout->addWidget(topFrame);
     rootLayout->addWidget(relicPanel);
 
-    setRelicCount(18);
+    setRelics({});
+    setPotionData({});
 }
 
 void StatusBarWidget::setHealth(int current, int maximum)
@@ -130,22 +162,28 @@ void StatusBarWidget::setHealth(int current, int maximum)
 
 void StatusBarWidget::setFloor(int floor)
 {
-    floorLabel->setText(QString::fromUtf8("层数 %1").arg(floor));
+    floorLabel->setText(QString::fromUtf8(u8"层数 %1").arg(floor));
 }
 
 void StatusBarWidget::setCharacterName(const QString &name)
 {
-    characterLabel->setText(QString::fromUtf8("角色 %1").arg(name));
+    characterLabel->setText(QString::fromUtf8(u8"角色 %1").arg(name));
 }
 
 void StatusBarWidget::setGold(int gold)
 {
-    goldLabel->setText(QString::fromUtf8("金币 %1").arg(gold));
+    goldLabel->setText(QString::fromUtf8(u8"金币 %1").arg(gold));
 }
 
 void StatusBarWidget::setPotions(int count)
 {
-    potionsLabel->setText(QString::fromUtf8("药水 %1").arg(count));
+    potionsLabel->setText(QString::fromUtf8(u8"药水 %1").arg(count));
+}
+
+void StatusBarWidget::setPotionData(const std::vector<PotionData> &potions)
+{
+    potionsLabel->setText(QString::fromUtf8(u8"药水 %1/3").arg(potions.size()));
+    rebuildPotions(potions);
 }
 
 void StatusBarWidget::setRelicCount(int count)
@@ -156,6 +194,11 @@ void StatusBarWidget::setRelicCount(int count)
 void StatusBarWidget::setRelicIcons(const std::vector<QPixmap> &icons)
 {
     rebuildRelics(icons);
+}
+
+void StatusBarWidget::setRelics(const std::vector<RelicData> &relics)
+{
+    rebuildRelics(relics);
 }
 
 QLabel* StatusBarWidget::createStatusLabel(const QString &title, const QString &value, const QColor &color)
@@ -201,5 +244,52 @@ void StatusBarWidget::rebuildRelics(const std::vector<QPixmap> &icons)
         relic->setIcon(icons[i]);
         relic->setColor(colors[i % colors.size()]);
         relicLayout->addWidget(relic, i / 15, i % 15, Qt::AlignLeft | Qt::AlignTop);
+    }
+}
+
+void StatusBarWidget::rebuildRelics(const std::vector<RelicData> &relics)
+{
+    while (QLayoutItem *item = relicLayout->takeAt(0)) {
+        if (QWidget *widget = item->widget()) {
+            widget->deleteLater();
+        }
+        delete item;
+    }
+
+    const QList<QColor> colors = {
+        QColor(185, 72, 58),
+        QColor(210, 155, 60),
+        QColor(92, 145, 205),
+        QColor(95, 175, 115),
+        QColor(150, 95, 195),
+    };
+
+    for (int i = 0; i < static_cast<int>(relics.size()); ++i) {
+        RelicIconWidget *relicWidget = new RelicIconWidget(relicPanel);
+        relicWidget->setColor(colors[i % colors.size()]);
+        relicWidget->setRelic(relics[i]);
+        connect(relicWidget, &RelicIconWidget::clicked, this, &StatusBarWidget::relicClicked);
+        relicLayout->addWidget(relicWidget, i / 15, i % 15, Qt::AlignLeft | Qt::AlignTop);
+    }
+}
+
+void StatusBarWidget::rebuildPotions(const std::vector<PotionData> &potions)
+{
+    while (QLayoutItem *item = potionLayout->takeAt(0)) {
+        if (QWidget *widget = item->widget()) {
+            widget->deleteLater();
+        }
+        delete item;
+    }
+
+    for (int i = 0; i < static_cast<int>(potions.size()) && i < 3; ++i) {
+        RelicIconWidget *potionWidget = new RelicIconWidget(potionPanel);
+        potionWidget->setIcon(QPixmap(potions[i].iconPath));
+        potionWidget->setColor(QColor(80, 170, 210));
+        potionWidget->setPopupText(potions[i].name, potions[i].effect);
+        connect(potionWidget, &RelicIconWidget::clicked, this, [this, i]() {
+            emit potionClicked(i);
+        });
+        potionLayout->addWidget(potionWidget, 0, i, Qt::AlignLeft | Qt::AlignVCenter);
     }
 }

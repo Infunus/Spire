@@ -12,9 +12,21 @@ public:
     static GameManager* instance();
     const RunData& runData() const;
     void startNewRun();
+    void setCompletedFloor(int floor);
+    void addRelic(const QString &relicId);
+    void addCard(const QString &cardId);
+    void addGold(int amount);
+    bool addPotion(const QString &potionId);
+    bool removePotionAt(int index);
+    bool spendGold(int amount);
+    void heal(int amount);
+    void takeDamage(int amount);
+    void finishBattleVictory();
 
 signals:
     void runDataChanged();
+    void playerDied();
+    void itemAcquired(const QString &text);
 
 private:
     explicit GameManager(QObject *parent = nullptr);
