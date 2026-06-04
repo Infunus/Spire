@@ -85,7 +85,7 @@ inline int cardRemovalPrice() { return 75; }     // 商店删牌服务价格。
 
 namespace Map
 {
-inline int layerCount() { return 7; }             // 地图总层数，最后一层是 Boss。
+inline int layerCount() { return 10; }            // 地图总层数，最后一层是 Boss。
 inline int normalRoomsPerLayer() { return 3; }    // 非 Boss 层每层节点数量。
 inline int bossRoomIndex() { return 1; }          // Boss 和强制休息节点所在的中间列。
 inline int randomRollMax() { return 100; }        // 地图节点随机数上限。

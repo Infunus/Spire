@@ -39,7 +39,7 @@ public:
     explicit MapCanvasWidget(QWidget *parent = nullptr)
         : QWidget(parent)
     {
-        setMinimumSize(900, 1600);
+        setMinimumSize(900, 2200);
     }
 
     void setBackgroundImage(const QString &imagePath)
@@ -184,7 +184,7 @@ public:
         m_currentLayer = 0;
         m_pendingRoom = nullptr;
 
-        const int canvasHeight = 1600;
+        const int canvasHeight = mapCanvasHeight();
         const int canvasWidth = qMax(900, m_scrollArea->viewport()->width());
         m_canvas->setFixedSize(canvasWidth, canvasHeight);
 
@@ -263,11 +263,17 @@ private:
         }
 
         const int newWidth = qMax(900, m_scrollArea->viewport()->width());
-        if (newWidth != m_canvas->width()) {
-            m_canvas->setFixedWidth(newWidth);
+        const int newHeight = mapCanvasHeight();
+        if (newWidth != m_canvas->width() || newHeight != m_canvas->height()) {
+            m_canvas->setFixedSize(newWidth, newHeight);
             layoutRooms();
             m_canvas->update();
         }
+    }
+
+    int mapCanvasHeight() const
+    {
+        return qMax(2200, 360 + m_layerCount * 260);
     }
 
     MapNodeType nodeTypeForLayer(int layer, int index) const

@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "core/EventLibrary.h"
 #include "core/GameState.h"
 #include "core/GameText.h"
 #include "ui/BattleWidget.h"
@@ -475,23 +476,18 @@ QWidget *MainWindow::createEventPreviewPage(bool fromMap)
     m_eventWidget = new EventWidget(page);
     m_eventWidget->setBackgroundImage(assetPath(GameText::Assets::eventBackground()));
 
-    RandomEventData previewEvent;
-    previewEvent.title = GameText::EventText::previewTitle();
-    previewEvent.body = GameText::EventText::previewBody();
-    // 后续不同事件可以在这里填入自己的事件图，例如：
-    // previewEvent.imagePath = assetPath(QStringLiteral("resources/events/library.png"));
-    previewEvent.choices << RandomEventChoice{GameText::EventText::previewChoiceA(), QString()}
-                         << RandomEventChoice{GameText::EventText::previewChoiceB(), QString()}
-                         << RandomEventChoice{GameText::EventText::previewChoiceC(), QString()};
-    m_eventWidget->setEvent(previewEvent);
+    m_eventWidget->setEvent(EventLibrary::randomEvent());
 
     m_eventWidget->setChoiceHandler([this, fromMap](int choiceIndex, const RandomEventChoice &choice) {
         Q_UNUSED(choiceIndex);
         Q_UNUSED(choice);
-        // 后续随机事件效果可以从这里接到 GameState / Player / Deck。
+        // 后续如果要接真实事件效果，就在这里按 choice.effectType 分支处理。
+        // 事件内容本身请优先写在 core/EventLibrary.h。
         if (fromMap) {
             GameState::instance().recordEventFinished();
             finishMapNode(true);
+        } else {
+            m_pages->setCurrentIndex(0);
         }
     });
 

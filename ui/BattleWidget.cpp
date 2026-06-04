@@ -7,8 +7,11 @@
 
 #include <QAbstractAnimation>
 #include <QApplication>
+#include <QCoreApplication>
 #include <QDialog>
+#include <QDir>
 #include <QEvent>
+#include <QFileInfo>
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
 #include <QGridLayout>
@@ -90,53 +93,70 @@ protected:
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
-        const QRectF r = rect().adjusted(4, 4, -4, -4);
-        QLinearGradient bg(r.topLeft(), r.bottomLeft());
-        bg.setColorAt(0.0, QColor(238, 213, 153));
-        bg.setColorAt(0.55, QColor(118, 73, 44));
-        bg.setColorAt(1.0, QColor(37, 22, 20));
-        painter.setPen(QPen(QColor(246, 218, 142), 3));
-        painter.setBrush(bg);
-        painter.drawRoundedRect(r, 16, 16);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(3, 5, 10, 92));
+        painter.drawEllipse(QRectF(width() * 0.2, height() * 0.72, width() * 0.6, height() * 0.13));
+
+        const QPointF c(width() * 0.5, height() * 0.43);
+        painter.setPen(QPen(QColor(255, 229, 145, 90), 2));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawEllipse(c, width() * 0.29, width() * 0.29);
+        painter.drawEllipse(c, width() * 0.22, width() * 0.22);
+
+        painter.setPen(QPen(QColor(255, 226, 134, 120), 3, Qt::SolidLine, Qt::RoundCap));
+        painter.drawArc(QRectF(c.x() - width() * 0.34, c.y() - width() * 0.23,
+                               width() * 0.68, width() * 0.46), 22 * 16, 138 * 16);
+        painter.drawArc(QRectF(c.x() - width() * 0.33, c.y() - width() * 0.25,
+                               width() * 0.66, width() * 0.5), 202 * 16, 118 * 16);
+
+        QPainterPath shield;
+        shield.moveTo(width() * 0.5, height() * 0.22);
+        shield.cubicTo(width() * 0.67, height() * 0.27, width() * 0.72, height() * 0.39, width() * 0.69, height() * 0.56);
+        shield.cubicTo(width() * 0.64, height() * 0.69, width() * 0.55, height() * 0.75, width() * 0.5, height() * 0.78);
+        shield.cubicTo(width() * 0.45, height() * 0.75, width() * 0.36, height() * 0.69, width() * 0.31, height() * 0.56);
+        shield.cubicTo(width() * 0.28, height() * 0.39, width() * 0.33, height() * 0.27, width() * 0.5, height() * 0.22);
+
+        QLinearGradient shieldFill(QPointF(0, height() * 0.22), QPointF(0, height() * 0.78));
+        shieldFill.setColorAt(0.0, QColor(122, 37, 45));
+        shieldFill.setColorAt(0.55, QColor(32, 50, 83));
+        shieldFill.setColorAt(1.0, QColor(17, 23, 39));
+        painter.setPen(QPen(QColor(255, 230, 150), 4));
+        painter.setBrush(shieldFill);
+        painter.drawPath(shield);
+
+        QPainterPath leftPage;
+        leftPage.moveTo(width() * 0.35, height() * 0.49);
+        leftPage.quadTo(width() * 0.43, height() * 0.44, width() * 0.5, height() * 0.51);
+        leftPage.lineTo(width() * 0.5, height() * 0.67);
+        leftPage.quadTo(width() * 0.42, height() * 0.61, width() * 0.35, height() * 0.66);
+        leftPage.closeSubpath();
+        QPainterPath rightPage;
+        rightPage.moveTo(width() * 0.5, height() * 0.51);
+        rightPage.quadTo(width() * 0.57, height() * 0.44, width() * 0.65, height() * 0.49);
+        rightPage.lineTo(width() * 0.65, height() * 0.66);
+        rightPage.quadTo(width() * 0.58, height() * 0.61, width() * 0.5, height() * 0.67);
+        rightPage.closeSubpath();
+        painter.setPen(QPen(QColor(89, 58, 42), 2));
+        painter.setBrush(QColor(255, 239, 194));
+        painter.drawPath(leftPage);
+        painter.drawPath(rightPage);
+
+        painter.setPen(QPen(QColor(255, 248, 215), 7, Qt::SolidLine, Qt::RoundCap));
+        painter.drawLine(QPointF(width() * 0.58, height() * 0.25), QPointF(width() * 0.42, height() * 0.66));
+        painter.setPen(QPen(QColor(255, 210, 83), 3, Qt::SolidLine, Qt::RoundCap));
+        painter.drawLine(QPointF(width() * 0.59, height() * 0.24), QPointF(width() * 0.43, height() * 0.67));
+        painter.setBrush(QColor(255, 245, 196));
+        painter.setPen(QPen(QColor(255, 225, 129), 2));
+        painter.drawPolygon(QPolygonF()
+                            << QPointF(width() * 0.6, height() * 0.22)
+                            << QPointF(width() * 0.64, height() * 0.27)
+                            << QPointF(width() * 0.58, height() * 0.29));
 
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(22, 18, 24, 115));
-        painter.drawEllipse(QRectF(width() * 0.22, height() * 0.74, width() * 0.56, height() * 0.12));
-
-        painter.setBrush(QColor(43, 48, 68));
-        QPainterPath robe;
-        robe.moveTo(width() * 0.5, height() * 0.43);
-        robe.cubicTo(width() * 0.27, height() * 0.52, width() * 0.24, height() * 0.77, width() * 0.34, height() * 0.82);
-        robe.lineTo(width() * 0.66, height() * 0.82);
-        robe.cubicTo(width() * 0.76, height() * 0.76, width() * 0.72, height() * 0.52, width() * 0.5, height() * 0.43);
-        painter.drawPath(robe);
-
-        painter.setBrush(QColor(242, 198, 154));
-        painter.drawEllipse(QRectF(width() * 0.38, height() * 0.24, width() * 0.24, height() * 0.22));
-
-        painter.setBrush(QColor(38, 28, 26));
-        QPainterPath hair;
-        hair.moveTo(width() * 0.36, height() * 0.32);
-        hair.cubicTo(width() * 0.39, height() * 0.18, width() * 0.6, height() * 0.16, width() * 0.65, height() * 0.31);
-        hair.cubicTo(width() * 0.56, height() * 0.25, width() * 0.47, height() * 0.25, width() * 0.36, height() * 0.32);
-        painter.drawPath(hair);
-
-        painter.setPen(QPen(QColor(34, 26, 24), 3, Qt::SolidLine, Qt::RoundCap));
-        painter.drawLine(QPointF(width() * 0.44, height() * 0.34), QPointF(width() * 0.45, height() * 0.34));
-        painter.drawLine(QPointF(width() * 0.56, height() * 0.34), QPointF(width() * 0.57, height() * 0.34));
-        painter.setPen(QPen(QColor(119, 57, 49), 2, Qt::SolidLine, Qt::RoundCap));
-        painter.drawArc(QRectF(width() * 0.45, height() * 0.36, width() * 0.1, height() * 0.05), 200 * 16, 140 * 16);
-
-        painter.setPen(QPen(QColor(255, 231, 151), 5, Qt::SolidLine, Qt::RoundCap));
-        painter.drawLine(QPointF(width() * 0.66, height() * 0.34), QPointF(width() * 0.78, height() * 0.23));
-        painter.setPen(QPen(QColor(255, 246, 214), 2, Qt::SolidLine, Qt::RoundCap));
-        painter.drawLine(QPointF(width() * 0.68, height() * 0.32), QPointF(width() * 0.8, height() * 0.2));
-
-        painter.setPen(QPen(QColor(255, 231, 151), 2));
-        painter.setBrush(QColor(91, 45, 39));
-        painter.drawRoundedRect(QRectF(width() * 0.25, height() * 0.57, width() * 0.27, height() * 0.18), 6, 6);
-        painter.setPen(QPen(QColor(249, 221, 151), 2));
-        painter.drawLine(QPointF(width() * 0.385, height() * 0.58), QPointF(width() * 0.385, height() * 0.74));
+        painter.setBrush(QColor(255, 228, 123));
+        painter.drawEllipse(QPointF(width() * 0.5, height() * 0.18), 5, 5);
+        painter.drawEllipse(QPointF(width() * 0.25, height() * 0.4), 3, 3);
+        painter.drawEllipse(QPointF(width() * 0.76, height() * 0.52), 3, 3);
 
         painter.setPen(QPen(QColor(255, 247, 220, 210), 2));
         painter.drawText(QRectF(width() * 0.16, height() * 0.84, width() * 0.68, height() * 0.08),
@@ -224,21 +244,20 @@ public:
           m_statusLayout(new QHBoxLayout(m_statusPanel)),
           m_intentLabel(new QLabel(this))
     {
-        setFixedSize(270, 300);
+        setFixedSize(240, 285);
         setAttribute(Qt::WA_StyledBackground, true);
         setStyleSheet("EnemyUnitWidget { background: transparent; }");
 
         m_portraitLabel->setAlignment(Qt::AlignCenter);
-        m_portraitLabel->setFixedSize(230, 180);
+        m_portraitLabel->setFixedSize(210, 160);
         m_portraitLabel->setStyleSheet(
             "QLabel {"
-            "  background: rgba(36, 22, 18, 105);"
-            "  border: 2px solid rgba(255, 226, 168, 135);"
-            "  border-radius: 14px;"
+            "  background: transparent;"
+            "  border: 0;"
             "  color: #fff3d0;"
-            "  font-size: 20px;"
+            "  font-size: 22px;"
             "  font-weight: 900;"
-            "  padding: 12px;"
+            "  padding: 8px;"
             "}");
 
         m_blockBadge->setFixedSize(38, 38);
@@ -248,7 +267,7 @@ public:
             "color: white; font-size: 15px; font-weight: 900; }");
         m_blockBadge->hide();
 
-        m_healthBar->setFixedSize(214, 24);
+        m_healthBar->setFixedSize(194, 24);
         m_healthBar->setTextVisible(true);
         m_healthBar->setStyleSheet(
             "QProgressBar { background: rgba(34, 18, 16, 190); border: 2px solid rgba(255, 226, 168, 150);"
@@ -261,12 +280,11 @@ public:
 
         m_intentLabel->setAlignment(Qt::AlignCenter);
         m_intentLabel->setWordWrap(true);
-        m_intentLabel->setFixedSize(210, 62);
+        m_intentLabel->setFixedSize(200, 60);
         m_intentLabel->setStyleSheet(
-            "QLabel { background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "stop:0 #f5e7c5, stop:0.64 #c08a4d, stop:1 #6c3d27);"
-            "border: 3px solid #6b4528; border-radius: 15px; color: #2b2118;"
-            "font-size: 14px; font-weight: 900; padding: 8px; }");
+            "QLabel { background: rgba(8, 12, 18, 132);"
+            "border: 1px solid rgba(255, 226, 168, 110); border-radius: 12px; color: #fff3d0;"
+            "font-size: 14px; font-weight: 900; padding: 7px; }");
 
         QVBoxLayout *root = new QVBoxLayout(this);
         root->setContentsMargins(0, 0, 0, 0);
@@ -380,18 +398,22 @@ BattleWidget::BattleWidget(QWidget *parent)
       m_enemiesDefeated(0),
       m_hoveredCardIndex(-1),
       m_dragCardIndex(-1),
+      m_dragPotionIndex(-1),
       m_enemyTurnIndex(0),
       m_draggingCardEntity(false),
+      m_draggingPotionEntity(false),
+      m_dragPotionGhost(nullptr),
       m_battleEnded(false),
       m_playerTurn(true),
       m_runFinished(false),
-      m_mapCallbackScheduled(false)
+      m_mapCallbackScheduled(false),
+      m_backgroundPixmap(resolveAssetPath(GameText::Assets::battleBackground()))
 {
     setObjectName("BattleWidget");
+    setAttribute(Qt::WA_StyledBackground, true);
     setStyleSheet(
         "#BattleWidget {"
-        "  background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
-        "                              stop:0 #2a1114, stop:0.48 #7b1d26, stop:1 #24100d);"
+        "  background: #10141d;"
         "}"
         "QLabel { color: #f5ead2; }"
         "QPushButton {"
@@ -407,18 +429,17 @@ BattleWidget::BattleWidget(QWidget *parent)
         "QPushButton:disabled { background: #3b201c; border-color: #7f5f47; color: #9d8b7a; }");
 
     QVBoxLayout *rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(18, 18, 18, 14);
-    rootLayout->setSpacing(12);
-    rootLayout->addWidget(createArenaPanel(), 1);
+    rootLayout->setContentsMargins(14, 10, 14, 8);
+    rootLayout->setSpacing(6);
     rootLayout->addWidget(createControlStrip());
+    rootLayout->addWidget(createArenaPanel(), 1);
 
-    m_handPanel->setMinimumHeight(240);
+    m_handPanel->setMinimumHeight(290);
     m_handPanel->setAttribute(Qt::WA_StyledBackground, true);
     m_handPanel->setStyleSheet(
         "QWidget {"
-        "  background: rgba(18, 12, 10, 92);"
-        "  border: 1px solid rgba(255, 226, 168, 60);"
-        "  border-radius: 18px;"
+        "  background: transparent;"
+        "  border: 0;"
         "}");
     rootLayout->addWidget(m_handPanel);
 
@@ -440,21 +461,16 @@ QWidget *BattleWidget::createArenaPanel()
 {
     QFrame *panel = new QFrame(this);
     panel->setStyleSheet(
-        "QFrame {"
-        "  background: qradialgradient(cx:0.5, cy:0.45, radius:0.72,"
-        "                              stop:0 #c8a76a, stop:0.68 #8b4a32, stop:1 #4d1818);"
-        "  border: 3px solid rgba(255, 220, 145, 170);"
-        "  border-radius: 28px;"
-        "}");
+        "QFrame { background: transparent; border: 0; }");
 
     m_titleLabel->setAlignment(Qt::AlignCenter);
     m_titleLabel->setStyleSheet(
-        "background: rgba(46, 30, 22, 125);"
-        "border: 1px solid rgba(255, 226, 168, 95);"
-        "border-radius: 14px;"
-        "font-size: 24px;"
+        "background: rgba(7, 11, 17, 96);"
+        "border: 0;"
+        "border-radius: 10px;"
+        "font-size: 22px;"
         "font-weight: 900;"
-        "padding: 8px 18px;");
+        "padding: 5px 16px;");
 
     const QString healthStyle =
         "QProgressBar {"
@@ -496,15 +512,15 @@ QWidget *BattleWidget::createArenaPanel()
     m_tipLabel->setMinimumSize(360, 126);
     m_tipLabel->setStyleSheet(
         "QLabel {"
-        "  background: rgba(26, 21, 18, 110);"
-        "  border: 1px solid rgba(255, 226, 168, 90);"
-        "  border-radius: 12px;"
-        "  padding: 14px 18px;"
-        "  font-size: 17px;"
+        "  background: transparent;"
+        "  border: 0;"
+        "  padding: 8px 12px;"
+        "  color: rgba(255, 244, 215, 180);"
+        "  font-size: 16px;"
         "  font-weight: 800;"
         "}");
 
-    m_enemyBoard->setMinimumSize(470, 330);
+    m_enemyBoard->setMinimumSize(560, 330);
     m_enemyBoard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_enemyBoard->setStyleSheet("background: transparent;");
 
@@ -532,24 +548,24 @@ QWidget *BattleWidget::createArenaPanel()
     middleLayout->addStretch();
 
     QGridLayout *arenaLayout = new QGridLayout(panel);
-    arenaLayout->setContentsMargins(28, 16, 28, 16);
+    arenaLayout->setContentsMargins(24, 0, 24, 2);
     arenaLayout->setHorizontalSpacing(22);
-    arenaLayout->setVerticalSpacing(10);
+    arenaLayout->setVerticalSpacing(0);
     arenaLayout->setColumnStretch(0, 2);
-    arenaLayout->setColumnStretch(1, 3);
-    arenaLayout->setColumnStretch(2, 2);
-    arenaLayout->addWidget(m_titleLabel, 0, 0, 1, 3);
-    arenaLayout->addWidget(playerPanel, 1, 0);
-    arenaLayout->addWidget(middlePanel, 1, 1);
-    arenaLayout->addWidget(m_enemyBoard, 1, 2, Qt::AlignCenter);
+    arenaLayout->setColumnStretch(1, 2);
+    arenaLayout->setColumnStretch(2, 3);
+    arenaLayout->addWidget(playerPanel, 0, 0);
+    arenaLayout->addWidget(middlePanel, 0, 1);
+    arenaLayout->addWidget(m_enemyBoard, 0, 2, Qt::AlignCenter);
     return panel;
 }
 
 QWidget *BattleWidget::createControlStrip()
 {
     QFrame *strip = new QFrame(this);
+    strip->setFixedHeight(64);
     strip->setStyleSheet(
-        "QFrame { background: rgba(25, 19, 17, 150); border-radius: 10px; }"
+        "QFrame { background: rgba(5, 10, 16, 150); border: 1px solid rgba(255, 226, 168, 70); border-radius: 10px; }"
         "QPushButton { border-radius: 8px; padding: 6px 10px; font-size: 13px; }");
 
     m_playerInfoLabel->setAlignment(Qt::AlignCenter);
@@ -565,8 +581,10 @@ QWidget *BattleWidget::createControlStrip()
         "}");
 
     QHBoxLayout *layout = new QHBoxLayout(strip);
-    layout->setContentsMargins(10, 7, 10, 7);
+    layout->setContentsMargins(12, 7, 12, 7);
     layout->setSpacing(8);
+    m_titleLabel->setMinimumWidth(250);
+    layout->addWidget(m_titleLabel);
     layout->addWidget(m_playerInfoLabel, 1);
     layout->addWidget(m_energyCrystalWidget);
 
@@ -594,9 +612,8 @@ QWidget *BattleWidget::createControlStrip()
         QPushButton *potionButton = new QPushButton(strip);
         potionButton->setCursor(Qt::PointingHandCursor);
         potionButton->setFixedSize(82, 32);
-        connect(potionButton, &QPushButton::clicked, this, [this, i]() {
-            usePotionAt(i);
-        });
+        potionButton->setProperty("potionIndex", i);
+        potionButton->installEventFilter(this);
         m_potionButtons.append(potionButton);
         layout->addWidget(potionButton);
     }
@@ -617,7 +634,7 @@ QWidget *BattleWidget::createControlStrip()
 void BattleWidget::setupInitialDemoText()
 {
     m_titleLabel->setText(GameText::App::title());
-    m_tipLabel->setText(QStringLiteral("拖动卡牌到敌人身上出牌。"));
+    m_tipLabel->setText(GameText::Battle::handTipText());
     refreshUi();
 }
 
@@ -684,6 +701,7 @@ void BattleWidget::startBattle()
     m_turnNumber = 0;
     m_hoveredCardIndex = -1;
     m_dragCardIndex = -1;
+    clearPotionDrag();
     m_enemyTurnIndex = 0;
     m_draggingCardEntity = false;
     m_battleEnded = false;
@@ -738,19 +756,19 @@ void BattleWidget::rebuildHandButtons()
         button->setStyleSheet(QStringLiteral(
             "QPushButton {"
             "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "                              stop:0 #305c83, stop:0.18 #f2d38b, stop:0.55 #8b4c2c, stop:1 #f5dfad);"
-            "  border: 3px solid %1;"
-            "  border-radius: 14px;"
+            "                              stop:0 #2f6f89, stop:0.14 #e8f8f8, stop:0.22 #d8bc7c, stop:0.58 #8a4a2b, stop:1 #f3d99c);"
+            "  border: 4px solid %1;"
+            "  border-radius: 17px;"
             "  color: #24170f;"
-            "  font-size: 12px;"
+            "  font-size: 13px;"
             "  font-weight: 900;"
             "  text-align: center;"
-            "  padding: 7px;"
+            "  padding: 10px 8px;"
             "}"
             "QPushButton:hover {"
             "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "                              stop:0 #fffaf0, stop:0.58 #ffd979, stop:1 #d28c37);"
-            "  border-color: #ffd27a;"
+            "                              stop:0 #5ed7e6, stop:0.16 #fffaf0, stop:0.58 #ffd979, stop:1 #d28c37);"
+            "  border-color: #39dce8;"
             "}"
             "QPushButton:disabled {"
             "  background: #7b756a;"
@@ -779,10 +797,10 @@ void BattleWidget::layoutHandButtons(bool animate)
     }
 
     const int panelWidth = qMax(720, m_handPanel->width());
-    const int panelHeight = qMax(220, m_handPanel->height());
-    const int cardWidth = 132;
-    const int cardHeight = 170;
-    const int spread = qMin(92, qMax(54, panelWidth / qMax(7, layoutCount + 4)));
+    const int panelHeight = qMax(270, m_handPanel->height());
+    const int cardWidth = 160;
+    const int cardHeight = 210;
+    const int spread = qMin(116, qMax(72, panelWidth / qMax(6, layoutCount + 3)));
     const int centerX = panelWidth / 2;
     const int baseY = panelHeight - cardHeight - 18;
 
@@ -803,12 +821,12 @@ void BattleWidget::layoutHandButtons(bool animate)
         const double offset = visibleIndex - (layoutCount - 1) / 2.0;
         ++visibleIndex;
         const bool hovered = (i == m_hoveredCardIndex && !m_draggingCardEntity);
-        const int curveLift = static_cast<int>(offset * offset * 5.0);
+        const int curveLift = static_cast<int>(offset * offset * 6.0);
         const QSize size = hovered
-                               ? QSize(static_cast<int>(cardWidth * 1.2), static_cast<int>(cardHeight * 1.2))
+                               ? QSize(static_cast<int>(cardWidth * 1.16), static_cast<int>(cardHeight * 1.16))
                                : QSize(cardWidth, cardHeight);
         const int x = centerX + static_cast<int>(offset * spread) - size.width() / 2;
-        const int y = baseY + curveLift - (hovered ? 34 : 0);
+        const int y = baseY + curveLift - (hovered ? 42 : 0);
         const QRect target(QPoint(x, y), size);
 
         if (BattleCardButton *cardButton = dynamic_cast<BattleCardButton *>(button)) {
@@ -838,8 +856,17 @@ void BattleWidget::layoutHandButtons(bool animate)
 
 bool BattleWidget::eventFilter(QObject *watched, QEvent *event)
 {
-    QWidget *cardWidget = qobject_cast<QWidget *>(watched);
-    if (!cardWidget || !cardWidget->property("cardIndex").isValid()) {
+    QWidget *watchedWidget = qobject_cast<QWidget *>(watched);
+    if (!watchedWidget) {
+        return QWidget::eventFilter(watched, event);
+    }
+
+    if (watchedWidget->property("potionIndex").isValid()) {
+        return handlePotionEvent(watchedWidget, event);
+    }
+
+    QWidget *cardWidget = watchedWidget;
+    if (!cardWidget->property("cardIndex").isValid()) {
         return QWidget::eventFilter(watched, event);
     }
 
@@ -925,6 +952,110 @@ bool BattleWidget::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
+void BattleWidget::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+    if (m_backgroundPixmap.isNull()) {
+        QLinearGradient fallback(rect().topLeft(), rect().bottomRight());
+        fallback.setColorAt(0.0, QColor(11, 18, 28));
+        fallback.setColorAt(0.52, QColor(40, 28, 38));
+        fallback.setColorAt(1.0, QColor(8, 9, 14));
+        painter.fillRect(rect(), fallback);
+    } else {
+        const QSize sourceSize = m_backgroundPixmap.size();
+        const double scale = qMax(width() / double(sourceSize.width()),
+                                  height() / double(sourceSize.height()));
+        const QSize targetSize(sourceSize.width() * scale, sourceSize.height() * scale);
+        const QPoint topLeft((width() - targetSize.width()) / 2,
+                             (height() - targetSize.height()) / 2);
+        painter.drawPixmap(QRect(topLeft, targetSize), m_backgroundPixmap);
+    }
+
+    QLinearGradient shade(rect().topLeft(), rect().bottomLeft());
+    shade.setColorAt(0.0, QColor(2, 6, 12, 100));
+    shade.setColorAt(0.45, QColor(2, 6, 12, 12));
+    shade.setColorAt(0.78, QColor(2, 5, 10, 40));
+    shade.setColorAt(1.0, QColor(2, 5, 10, 150));
+    painter.fillRect(rect(), shade);
+}
+
+bool BattleWidget::handlePotionEvent(QWidget *potionWidget, QEvent *event)
+{
+    if (!potionWidget || !potionWidget->property("potionIndex").isValid()) {
+        return false;
+    }
+
+    const int potionIndex = potionWidget->property("potionIndex").toInt();
+    const QList<PotionData> potions = GameState::instance().potions();
+    if (potionIndex < 0 || potionIndex >= potions.size()) {
+        return false;
+    }
+
+    if (event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+        if (mouseEvent->button() == Qt::LeftButton && potionWidget->isEnabled()) {
+            m_dragPotionIndex = potionIndex;
+            m_potionDragStartPos = mouseEvent->globalPosition().toPoint();
+            m_draggingPotionEntity = false;
+            potionWidget->grabMouse();
+            return true;
+        }
+    }
+
+    if (event->type() == QEvent::MouseMove && m_dragPotionIndex == potionIndex) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+        if ((mouseEvent->globalPosition().toPoint() - m_potionDragStartPos).manhattanLength()
+            >= QApplication::startDragDistance()) {
+            if (!m_dragPotionGhost) {
+                const QRect globalRect(potionWidget->mapToGlobal(QPoint(0, 0)), potionWidget->size());
+                QPushButton *potionButton = qobject_cast<QPushButton *>(potionWidget);
+                const QString ghostText = potionButton ? potionButton->text() : potions.at(potionIndex).name;
+                m_dragPotionGhost = new QLabel(ghostText, this);
+                m_dragPotionGhost->setAlignment(Qt::AlignCenter);
+                m_dragPotionGhost->setAttribute(Qt::WA_TransparentForMouseEvents);
+                m_dragPotionGhost->setStyleSheet(
+                    "QLabel { background: rgba(61, 105, 126, 235);"
+                    "border: 2px solid rgba(194, 237, 255, 220); border-radius: 10px;"
+                    "color: #effcff; font-size: 12px; font-weight: 900; padding: 6px; }");
+                m_dragPotionGhost->setGeometry(QRect(mapFromGlobal(globalRect.topLeft()), globalRect.size()));
+                m_dragPotionGhost->show();
+                m_dragPotionGhost->raise();
+            }
+
+            m_draggingPotionEntity = true;
+            if (m_dragPotionGhost) {
+                m_dragPotionGhost->move(mapFromGlobal(mouseEvent->globalPosition().toPoint())
+                                        - QPoint(m_dragPotionGhost->width() / 2,
+                                                 m_dragPotionGhost->height() / 2));
+                m_dragPotionGhost->raise();
+            }
+            return true;
+        }
+    }
+
+    if (event->type() == QEvent::MouseButtonRelease && m_dragPotionIndex == potionIndex) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+        potionWidget->releaseMouse();
+
+        if (m_draggingPotionEntity) {
+            const PotionData potion = potions.at(potionIndex);
+            const int targetEnemyIndex = enemyIndexAtGlobalPoint(mouseEvent->globalPosition().toPoint());
+            if (!potionTargetsEnemy(potion) || targetEnemyIndex >= 0) {
+                usePotionAt(potionIndex, targetEnemyIndex);
+            }
+        }
+
+        clearPotionDrag();
+        return true;
+    }
+
+    return false;
+}
+
 void BattleWidget::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
@@ -1004,11 +1135,11 @@ void BattleWidget::layoutEnemyWidgets()
         return;
     }
 
-    const QSize unitSize(270, 300);
+    const QSize unitSize(240, 285);
     const int centerX = m_enemyBoard->width() / 2;
     const int centerY = m_enemyBoard->height() / 2;
-    const int horizontalStep = aliveCount <= 2 ? 148 : 126;
-    const int depthStep = 28;
+    const int horizontalStep = aliveCount <= 2 ? 222 : 184;
+    const int depthStep = 20;
     int aliveIndex = 0;
 
     for (int i = 0; i < m_enemyWidgets.size() && i < m_enemies.size(); ++i) {
@@ -1022,7 +1153,7 @@ void BattleWidget::layoutEnemyWidgets()
 
         const double offset = aliveIndex - (aliveCount - 1) / 2.0;
         const int x = centerX + static_cast<int>(offset * horizontalStep) - unitSize.width() / 2;
-        const int y = centerY - unitSize.height() / 2 + aliveIndex * depthStep;
+        const int y = centerY - unitSize.height() / 2 + static_cast<int>(offset * depthStep);
         enemyWidget->setGeometry(QRect(QPoint(x, y), unitSize));
         enemyWidget->show();
         enemyWidget->raise();
@@ -1130,7 +1261,7 @@ void BattleWidget::refreshPotionSlots()
 
         const PotionData potion = potions.at(i);
         button->setText(potion.name);
-        button->setToolTip(potion.description);
+        button->setToolTip(QStringLiteral("%1\n拖动到目标使用").arg(potion.description));
         button->setEnabled(!m_battleEnded && m_playerTurn);
         button->setStyleSheet("background: rgba(45, 76, 92, 205); border: 1px solid rgba(178, 225, 240, 150); border-radius: 8px; color: #effcff; font-size: 12px; font-weight: 800;");
     }
@@ -1199,7 +1330,22 @@ void BattleWidget::applyRelicsAfterBattleWin()
     GameState::instance().setHp(m_playerHp);
 }
 
-void BattleWidget::usePotionAt(int potionIndex)
+bool BattleWidget::potionTargetsEnemy(const PotionData &potion) const
+{
+    return potion.effectType == PotionEffectType::DamageEnemy;
+}
+
+void BattleWidget::clearPotionDrag()
+{
+    if (m_dragPotionGhost) {
+        m_dragPotionGhost->deleteLater();
+        m_dragPotionGhost = nullptr;
+    }
+    m_dragPotionIndex = -1;
+    m_draggingPotionEntity = false;
+}
+
+void BattleWidget::usePotionAt(int potionIndex, int targetEnemyIndex)
 {
     if (m_battleEnded || !m_playerTurn) {
         return;
@@ -1212,7 +1358,9 @@ void BattleWidget::usePotionAt(int potionIndex)
 
     const PotionData potion = potions.at(potionIndex);
     if (potion.effectType == PotionEffectType::DamageEnemy) {
-        const int targetEnemyIndex = firstAliveEnemyIndex();
+        if (targetEnemyIndex < 0) {
+            targetEnemyIndex = firstAliveEnemyIndex();
+        }
         if (targetEnemyIndex < 0 || targetEnemyIndex >= m_enemies.size()) {
             return;
         }
@@ -1312,6 +1460,7 @@ void BattleWidget::playCard(int handIndex, int targetEnemyIndex)
 
     m_hoveredCardIndex = -1;
     m_dragCardIndex = -1;
+    clearPotionDrag();
     m_draggingCardEntity = false;
     rebuildHandButtons();
 
@@ -1446,6 +1595,18 @@ void BattleWidget::playEnemyAttackAnimation(int enemyIndex)
         return;
     }
 
+    if (!m_enemies.at(enemyIndex).currentActionDealsDamage()) {
+        QTimer::singleShot(GameBalance::Battle::enemyActionPauseMs(), this, [this, enemyIndex]() {
+            applyEnemyAction(enemyIndex);
+            if (!checkBattleEnd()) {
+                QTimer::singleShot(GameBalance::Battle::enemyActionPauseMs(),
+                                   this,
+                                   &BattleWidget::runNextEnemyAction);
+            }
+        });
+        return;
+    }
+
     QWidget *enemyAnchor = m_enemyWidgets.at(enemyIndex)->portraitAnchor();
     if (!enemyAnchor || !m_playerPortraitWidget) {
         applyEnemyAction(enemyIndex);
@@ -1561,6 +1722,36 @@ QString BattleWidget::cardLine(const Card &card) const
         .arg(card.displayName(), exhaustText)
         .arg(card.cost())
         .arg(card.description());
+}
+
+QString BattleWidget::resolveAssetPath(const QString &relativePath) const
+{
+    if (relativePath.isEmpty() || QFileInfo(relativePath).isAbsolute()) {
+        return relativePath;
+    }
+
+    QStringList candidates;
+    auto addCandidatesFrom = [&candidates, &relativePath](const QDir &startDir) {
+        QDir dir(startDir);
+        for (int i = 0; i < 8; ++i) {
+            candidates << dir.filePath(relativePath);
+            candidates << dir.filePath(QStringLiteral("Spire/%1").arg(relativePath));
+            if (!dir.cdUp()) {
+                break;
+            }
+        }
+    };
+
+    addCandidatesFrom(QDir(QCoreApplication::applicationDirPath()));
+    addCandidatesFrom(QDir::current());
+    addCandidatesFrom(QDir(QFileInfo(QString::fromUtf8(__FILE__)).absolutePath()));
+
+    for (const QString &candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+    return relativePath;
 }
 
 bool BattleWidget::checkBattleEnd()

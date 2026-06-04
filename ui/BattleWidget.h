@@ -7,6 +7,7 @@
 
 #include <QList>
 #include <QPoint>
+#include <QPixmap>
 #include <QPushButton>
 #include <QWidget>
 
@@ -16,11 +17,13 @@ class QEvent;
 class QFrame;
 class QHBoxLayout;
 class QLabel;
+class QPaintEvent;
 class QProgressBar;
 class QResizeEvent;
 class EnemyUnitWidget;
 class EnergyCrystalWidget;
 class PlayerPortraitWidget;
+struct PotionData;
 
 class BattleWidget : public QWidget
 {
@@ -34,6 +37,7 @@ public:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private slots:
@@ -66,7 +70,7 @@ private:
     void rebuildStatusIcons(QHBoxLayout *layout, const QList<QPair<QString, int>> &statuses);
     void applyRelicsAtBattleStart();
     void applyRelicsAfterBattleWin();
-    void usePotionAt(int potionIndex);
+    void usePotionAt(int potionIndex, int targetEnemyIndex = -1);
     void playCard(int handIndex, int targetEnemyIndex = -1);
     void animateCardToPile(int handIndex, PileKind pileKind);
     void runNextEnemyAction();
@@ -77,12 +81,16 @@ private:
     void showPileDialog(PileKind pileKind);
     QString cardListText(const QList<Card> &cards) const;
     QString cardLine(const Card &card) const;
+    QString resolveAssetPath(const QString &relativePath) const;
     bool checkBattleEnd();
     void scheduleMapCallback(bool victory);
     QList<Card> createDefaultCards() const;
     QList<Enemy> createEnemiesForBattle() const;
     int playerAttackDamage(const Card &card) const;
     void showDamagePopup(QWidget *anchor, int damage);
+    bool handlePotionEvent(QWidget *potionWidget, QEvent *event);
+    bool potionTargetsEnemy(const PotionData &potion) const;
+    void clearPotionDrag();
     int firstAliveEnemyIndex() const;
     int enemyIndexAtGlobalPoint(const QPoint &globalPoint) const;
     bool allEnemiesDead() const;
@@ -124,14 +132,19 @@ private:
     int m_enemiesDefeated;
     int m_hoveredCardIndex;
     int m_dragCardIndex;
+    int m_dragPotionIndex;
     int m_enemyTurnIndex;
     QPoint m_dragStartPos;
+    QPoint m_potionDragStartPos;
     bool m_draggingCardEntity;
+    bool m_draggingPotionEntity;
+    QLabel *m_dragPotionGhost;
     bool m_battleEnded;
     bool m_playerTurn;
     bool m_runFinished;
     bool m_mapCallbackScheduled;
     std::function<void(bool)> m_finishCallback;
+    QPixmap m_backgroundPixmap;
 };
 
 #endif // BATTLEWIDGET_H

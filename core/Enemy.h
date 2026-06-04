@@ -84,6 +84,13 @@ public:
     int weakStacks() const { return m_weakStacks; }
     int vulnerableStacks() const { return m_vulnerableStacks; }
     int strength() const { return m_strength; }
+    bool currentActionDealsDamage() const
+    {
+        const EnemyAction action = currentAction();
+        return action.type == EnemyActionAttack
+               || action.type == EnemyActionAttackAndBuff
+               || action.type == EnemyActionAttackAndBlock;
+    }
 
     QString intentText() const
     {
