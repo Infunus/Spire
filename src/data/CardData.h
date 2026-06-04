@@ -36,9 +36,14 @@ struct CardData {
     int cost = 0;
     int damage = 0;
     int block = 0;
+    int heal = 0;
+    int selfDamage = 0;
     int energyGain = 0;
     int strengthGain = 0;
     int enemyWeak = 0;
+    int enemyVulnerable = 0;
+    int draw = 0;
+    int strengthMultiplier = 1;
     int hitCount = 1;
     bool exhaust = false;
     bool retain = false;

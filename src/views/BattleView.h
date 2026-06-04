@@ -2,6 +2,7 @@
 #define BATTLEVIEW_H
 
 #include <QWidget>
+#include <QPoint>
 #include <vector>
 
 #include "data/CardData.h"
@@ -13,6 +14,10 @@ class QPushButton;
 class QHBoxLayout;
 class QVBoxLayout;
 class QWidget;
+class QFrame;
+class QDragEnterEvent;
+class QDropEvent;
+class QResizeEvent;
 
 // BattleView is a basic combat test scene.
 // Example: startBattle(EnemyCatalog::brute()) starts a fight; battleFinished() emits after victory.
@@ -31,6 +36,9 @@ signals:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     enum class PileKind {
@@ -52,27 +60,35 @@ private:
     void shufflePile(std::vector<CardData> &pile);
     void refreshLabels();
     void rebuildHandButtons();
+    void layoutHandButtons(bool animate);
     void refreshPileButtons();
     void showPileDialog(PileKind pileKind);
     QString cardLine(const CardData &card) const;
+    void selectCard(int handIndex);
+    void confirmSelectedCard();
     void playCard(int handIndex);
+    void playDraggedCardIfValid(int handIndex);
     void endTurn();
     void finishVictory();
     void hidePotionConfirm();
     void useSelectedPotionOnEnemy();
     void useSelectedPotionOnPlayer();
     int playerAttackDamage(int baseDamage) const;
-    int enemyAttackDamage() const;
+    int enemyAttackDamage(int baseDamage = -1) const;
 
     QLabel *titleLabel;
+    QLabel *playerPortraitLabel;
+    QLabel *enemyPortraitLabel;
     QLabel *enemyLabel;
     QLabel *playerLabel;
     QLabel *logLabel;
     QWidget *potionConfirmPanel;
     QLabel *potionConfirmLabel;
+    QFrame *arenaPanel;
+    QWidget *handPanel;
     QHBoxLayout *pileButtonLayout;
-    QHBoxLayout *handLayout;
     QPushButton *endTurnButton;
+    QPushButton *confirmCardButton;
     QPushButton *drawPileButton;
     QPushButton *discardPileButton;
     QPushButton *exhaustPileButton;
@@ -81,6 +97,7 @@ private:
     std::vector<CardData> discardPile;
     std::vector<CardData> exhaustPile;
     std::vector<CardData> hand;
+    std::vector<QPushButton*> handButtons;
     int enemyHp = 0;
     int block = 0;
     int maxEnergy = 3;
@@ -95,9 +112,15 @@ private:
     int playerRegen = 0;
     int enemyStrength = 0;
     int enemyWeak = 0;
+    int enemyVulnerable = 0;
     int enemyBlock = 0;
     int enemyPoison = 0;
+    int enemyIntentIndex = 0;
     int turnNumber = 0;
+    int selectedCardIndex = -1;
+    int dragCardIndex = -1;
+    QPoint dragStartPos;
+    QLabel *dragPreviewLabel = nullptr;
     int selectedPotionIndex = -1;
     PotionData selectedPotion;
 };

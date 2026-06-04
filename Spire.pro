@@ -50,6 +50,7 @@ HEADERS += \
     src/data/CardData.h \
     src/data/EnemyData.h \
     src/data/EventData.h \
+    src/data/GameText.h \
     src/data/CharacterData.h \
     src/data/RelicData.h \
     src/data/PotionData.h

@@ -7,6 +7,7 @@
 
 class QLabel;
 class QPushButton;
+class QResizeEvent;
 
 // EventView is used for non-combat, non-shop rooms.
 // Example: RestSite displays text and emits eventFinished() only after the exit button is pressed.
@@ -20,6 +21,9 @@ public:
 
 signals:
     void eventFinished();
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     QLabel *iconLabel;

@@ -42,6 +42,50 @@ MainWindow::MainWindow(QWidget *parent)
     setupUi();
 
     connect(mainMenuView, &MainMenuView::startRunRequested, this, &MainWindow::startNewRunFromMenu);
+    auto prepareDebugRun = [this]() {
+        runEnded = false;
+        mapVisible = false;
+        GameManager::instance()->startNewRun();
+        mapView->resetMap();
+        statusBarWidget->setVisible(true);
+        updateStatusBar();
+    };
+    connect(mainMenuView, &MainMenuView::debugBattleRequested, this, [this, prepareDebugRun]() {
+        prepareDebugRun();
+        battleView->startBattle(EnemyCatalog::brute());
+        activeSceneWidget = battleView;
+        contentStack->setCurrentWidget(battleView);
+    });
+    connect(mainMenuView, &MainMenuView::debugBossRequested, this, [this, prepareDebugRun]() {
+        prepareDebugRun();
+        battleView->startBattle(EnemyCatalog::hydraBoss());
+        activeSceneWidget = battleView;
+        contentStack->setCurrentWidget(battleView);
+    });
+    connect(mainMenuView, &MainMenuView::debugShopRequested, this, [this, prepareDebugRun]() {
+        prepareDebugRun();
+        shopView->openShop();
+        activeSceneWidget = shopView;
+        contentStack->setCurrentWidget(shopView);
+    });
+    connect(mainMenuView, &MainMenuView::debugEventRequested, this, [this, prepareDebugRun]() {
+        prepareDebugRun();
+        eventView->setEvent(EventCatalog::eventForKind(EventKind::Treasure));
+        activeSceneWidget = eventView;
+        contentStack->setCurrentWidget(eventView);
+    });
+    connect(mainMenuView, &MainMenuView::debugRewardRequested, this, [this, prepareDebugRun]() {
+        prepareDebugRun();
+        rewardView->openRewards();
+        activeSceneWidget = rewardView;
+        contentStack->setCurrentWidget(rewardView);
+    });
+    connect(mainMenuView, &MainMenuView::debugRestRequested, this, [this, prepareDebugRun]() {
+        prepareDebugRun();
+        eventView->setEvent(EventCatalog::eventForKind(EventKind::RestSite));
+        activeSceneWidget = eventView;
+        contentStack->setCurrentWidget(eventView);
+    });
 
     connect(statusBarWidget, &StatusBarWidget::mapButtonClicked, this, &MainWindow::toggleMapVisibility);
     connect(statusBarWidget, &StatusBarWidget::deckButtonClicked, this, &MainWindow::showDeckDialog);

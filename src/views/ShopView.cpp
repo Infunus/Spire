@@ -1,6 +1,7 @@
 #include "ShopView.h"
 
 #include "core/GameManager.h"
+#include "data/GameText.h"
 
 #include <QFrame>
 #include <QHBoxLayout>
@@ -13,20 +14,31 @@ ShopView::ShopView(QWidget *parent)
     , titleLabel(new QLabel(this))
     , messageLabel(new QLabel(this))
     , itemsLayout(new QVBoxLayout)
-    , exitButton(new QPushButton(QString::fromUtf8(u8"离开商店"), this))
+    , exitButton(new QPushButton(GameText::Shop::leaveButton(), this))
 {
     setStyleSheet(
-        "ShopView { background: #1d1b16; }"
+        "ShopView { background: #10131d; }"
         "QLabel { color: #f5ead2; font-size: 17px; }"
-        "QFrame#shopItem { background: rgba(255,255,255,24); border: 1px solid rgba(255,255,255,70); border-radius: 6px; }"
-        "QPushButton { color: #f8edd4; background: #87662e; border: 1px solid rgba(255,255,255,90);"
-        "              border-radius: 4px; padding: 8px 14px; font-size: 15px; font-weight: 700; }"
-        "QPushButton:hover { background: #a17a39; }"
-        "QPushButton:disabled { background: #555; color: #aaa; border-color: rgba(255,255,255,35); }");
+        "QFrame#shopItem {"
+        "  background: rgba(8, 11, 18, 185);"
+        "  border: 1px solid rgba(185, 215, 255, 125);"
+        "  border-radius: 10px;"
+        "}"
+        "QPushButton {"
+        "  background: rgba(255, 226, 168, 34);"
+        "  border: 1px solid rgba(255, 226, 168, 135);"
+        "  border-radius: 8px;"
+        "  color: #fff1cc;"
+        "  font-size: 16px;"
+        "  font-weight: 800;"
+        "  padding: 10px 14px;"
+        "}"
+        "QPushButton:hover { background: rgba(235, 184, 88, 96); border-color: rgba(255, 235, 177, 220); }"
+        "QPushButton:disabled { background: #3b201c; border-color: #7f5f47; color: #7d6655; }");
 
-    titleLabel->setText(QString::fromUtf8(u8"商人"));
+    titleLabel->setText(GameText::Shop::title());
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("font-size: 32px; font-weight: 800;");
+    titleLabel->setStyleSheet("font-size: 34px; font-weight: 900; color: #fff6dc;");
     messageLabel->setAlignment(Qt::AlignCenter);
     messageLabel->setWordWrap(true);
 
@@ -56,8 +68,8 @@ void ShopView::openShop()
     }
 
     messageLabel->setText(saleRelics.empty()
-                              ? QString::fromUtf8(u8"商店暂时没有新的遗物。")
-                              : QString::fromUtf8(u8"选择一个遗物购买。拥有幸运护符时，价格降低 10%。"));
+                              ? GameText::Shop::emptyText()
+                              : GameText::Shop::chooseText());
     rebuildItems();
 }
 
@@ -74,29 +86,30 @@ void ShopView::rebuildItems()
         QFrame *row = new QFrame(this);
         row->setObjectName("shopItem");
         QHBoxLayout *rowLayout = new QHBoxLayout(row);
-        rowLayout->setContentsMargins(14, 12, 14, 12);
-        rowLayout->setSpacing(12);
+        rowLayout->setContentsMargins(18, 14, 18, 14);
+        rowLayout->setSpacing(14);
 
         QLabel *label = new QLabel(QString::fromUtf8(u8"%1\n%2").arg(relic.name, relic.effect), row);
         label->setWordWrap(true);
+        label->setStyleSheet("font-size: 16px; color: rgba(255,247,224,220);");
 
         QPushButton *buyButton = new QPushButton(row);
         const bool bought = boughtRelicIds.contains(relic.id);
         buyButton->setText(bought
-                               ? QString::fromUtf8(u8"已购买")
-                               : QString::fromUtf8(u8"购买 %1 金币").arg(priceForRelic(relic)));
+                               ? GameText::Shop::boughtButton()
+                               : GameText::Shop::buyButtonFormat().arg(priceForRelic(relic)));
         buyButton->setEnabled(!bought);
 
         connect(buyButton, &QPushButton::clicked, this, [this, relic]() {
             const int price = priceForRelic(relic);
             if (!GameManager::instance()->spendGold(price)) {
-                messageLabel->setText(QString::fromUtf8(u8"金币不足，买不起 %1。").arg(relic.name));
+                messageLabel->setText(GameText::Shop::notEnoughGoldFormat().arg(relic.name));
                 return;
             }
 
             GameManager::instance()->addRelic(relic.id);
             boughtRelicIds.append(relic.id);
-            messageLabel->setText(QString::fromUtf8(u8"购买了 %1。").arg(relic.name));
+            messageLabel->setText(GameText::Shop::boughtFormat().arg(relic.name));
             rebuildItems();
         });
 

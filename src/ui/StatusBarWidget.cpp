@@ -1,10 +1,13 @@
 #include "StatusBarWidget.h"
 
+#include <QApplication>
+#include <QDrag>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QMimeData>
 #include <QPainter>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -44,6 +47,12 @@ void RelicIconWidget::setPopupText(const QString &title, const QString &descript
     setToolTip(QStringLiteral("%1\n%2").arg(title, description));
 }
 
+void RelicIconWidget::setDragPayload(const QString &mimeType, int index)
+{
+    dragMimeType = mimeType;
+    dragIndex = index;
+}
+
 void RelicIconWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event)
@@ -65,10 +74,37 @@ void RelicIconWidget::paintEvent(QPaintEvent *event)
 
 void RelicIconWidget::mousePressEvent(QMouseEvent *event)
 {
+    if (event->button() == Qt::LeftButton) {
+        dragStartPos = event->pos();
+    }
     if (event->button() == Qt::LeftButton && (!popupTitle.isEmpty() || !popupDescription.isEmpty())) {
         emit clicked(popupTitle, popupDescription);
     }
     QWidget::mousePressEvent(event);
+}
+
+void RelicIconWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (!(event->buttons() & Qt::LeftButton) || dragMimeType.isEmpty() || dragIndex < 0) {
+        QWidget::mouseMoveEvent(event);
+        return;
+    }
+
+    if ((event->pos() - dragStartPos).manhattanLength() < QApplication::startDragDistance()) {
+        QWidget::mouseMoveEvent(event);
+        return;
+    }
+
+    QDrag *drag = new QDrag(this);
+    QMimeData *mimeData = new QMimeData;
+    mimeData->setData(dragMimeType, QByteArray::number(dragIndex));
+    mimeData->setText(popupTitle);
+    drag->setMimeData(mimeData);
+    if (!icon.isNull()) {
+        drag->setPixmap(icon.scaled(34, 34, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        drag->setHotSpot(QPoint(17, 17));
+    }
+    drag->exec(Qt::MoveAction);
 }
 
 StatusBarWidget::StatusBarWidget(QWidget *parent)
@@ -287,6 +323,7 @@ void StatusBarWidget::rebuildPotions(const std::vector<PotionData> &potions)
         potionWidget->setIcon(QPixmap(potions[i].iconPath));
         potionWidget->setColor(QColor(80, 170, 210));
         potionWidget->setPopupText(potions[i].name, potions[i].effect);
+        potionWidget->setDragPayload(QStringLiteral("application/x-spire-potion"), i);
         connect(potionWidget, &RelicIconWidget::clicked, this, [this, i]() {
             emit potionClicked(i);
         });

@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class QPushButton;
+class QResizeEvent;
 
 class MainMenuView : public QWidget
 {
@@ -14,7 +15,16 @@ public:
 
 signals:
     void startRunRequested();
+    void debugBattleRequested();
+    void debugBossRequested();
+    void debugShopRequested();
+    void debugEventRequested();
+    void debugRewardRequested();
+    void debugRestRequested();
     void quitRequested();
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 };
 
 #endif // MAINMENUVIEW_H

@@ -16,7 +16,16 @@ enum class EnemyIntent {
     Defend,
     Buff,
     Debuff,
+    Heal,
+    AttackAndBuff,
+    AttackAndBlock,
     Unknown
+};
+
+struct EnemyActionData {
+    EnemyIntent intent = EnemyIntent::Attack;
+    int amount = 0;
+    int extra = 0;
 };
 
 struct EnemyData {
@@ -28,6 +37,7 @@ struct EnemyData {
     EnemyIntent defaultIntent = EnemyIntent::Unknown;
     QString description;
     QString imagePath;
+    std::vector<EnemyActionData> actions;
 };
 
 class EnemyCatalog

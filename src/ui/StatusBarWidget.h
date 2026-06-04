@@ -3,6 +3,7 @@
 
 #include <QColor>
 #include <QPixmap>
+#include <QPoint>
 #include <QWidget>
 #include <QString>
 #include <vector>
@@ -26,6 +27,7 @@ public:
     void setColor(const QColor &color);
     void setRelic(const RelicData &relic);
     void setPopupText(const QString &title, const QString &description);
+    void setDragPayload(const QString &mimeType, int index);
 
 signals:
     void clicked(const QString &title, const QString &description);
@@ -33,12 +35,16 @@ signals:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
 
 private:
     QPixmap icon;
     QColor color;
     QString popupTitle;
     QString popupDescription;
+    QString dragMimeType;
+    int dragIndex = -1;
+    QPoint dragStartPos;
 };
 
 class StatusBarWidget : public QWidget
