@@ -2,6 +2,7 @@
 #define EVENTLIBRARY_H
 
 #include "CardLibrary.h"
+#include "GameBalance.h"
 #include "GameState.h"
 #include "GameText.h"
 #include "GameRandom.h"
@@ -36,10 +37,17 @@ enum class EventEffectType
     None,           // 暂无真实效果，只显示选择结果。
     HealHp,         // 回复心情，amount 表示回复量。代码名沿用 Hp，显示时统一叫“心情”。
     LoseHp,         // 扣除心情，amount 表示扣除量。代码名沿用 Hp，显示时统一叫“心情”。
-    GainCoins,      // 获得资源点，amount 表示获得量。
+    GainCoins,      // 获得 Money，amount 表示获得量。
     AddCardById,    // 获得卡牌，targetId 填 CardLibrary 里的卡牌 id。
     GainRelicById,  // 获得圣遗物，targetId 填 RelicLibrary 里的圣遗物 id。
-    GainPotionById  // 获得药水，targetId 填 PotionLibrary 里的药水 id。
+    GainPotionById  // 获得饮料，targetId 填 PotionLibrary 里的饮料 id。
+};
+
+struct RandomEventEffect
+{
+    EventEffectType effectType = EventEffectType::None;
+    int amount = 0;
+    QString targetId;
 };
 
 struct RandomEventChoice
@@ -47,11 +55,11 @@ struct RandomEventChoice
     QString text;        // 按钮上显示的选项文本。
     QString resultText;  // 点击后显示的结果文本；为空时默认显示“已选择：选项名”。
 
-    // 下面这几个字段先作为接口预留。当前 MainWindow 暂时只完成“事件节点已完成”的结算，
-    // 后续要接真实效果时，可以在 MainWindow 的 setChoiceHandler 里按 effectType 分支处理。
+    // 单效果快捷字段。多数事件直接填这三项即可；需要多个效果时用 effects。
     EventEffectType effectType = EventEffectType::None;
     int amount = 0;
     QString targetId;
+    QList<RandomEventEffect> effects;
 
     // 给设计者看的备注，不直接显示。可以写“扣 8 心情后给一张卡”这种自然语言。
     QString effectHint;
@@ -73,44 +81,190 @@ struct RandomEventData
 
 namespace EventLibrary
 {
-inline bool applyChoiceEffect(const RandomEventChoice &choice)
+inline RandomEventEffect makeEffect(EventEffectType effectType = EventEffectType::None,
+                                    int amount = 0,
+                                    const QString &targetId = QString())
+{
+    RandomEventEffect effect;
+    effect.effectType = effectType;
+    effect.amount = amount;
+    effect.targetId = targetId;
+    return effect;
+}
+
+inline QList<RandomEventEffect> choiceEffects(const RandomEventChoice &choice)
+{
+    if (!choice.effects.isEmpty()) {
+        return choice.effects;
+    }
+
+    QList<RandomEventEffect> effects;
+    if (choice.effectType != EventEffectType::None) {
+        effects << makeEffect(choice.effectType, choice.amount, choice.targetId);
+    }
+    return effects;
+}
+
+inline QString effectSummaryLine(const RandomEventEffect &effect)
+{
+    switch (effect.effectType) {
+    case EventEffectType::HealHp:
+        return effect.amount > 0
+                   ? QStringLiteral("影响：心情 +%1。").arg(effect.amount)
+                   : QString();
+    case EventEffectType::LoseHp:
+        return effect.amount > 0
+                   ? QStringLiteral("影响：心情 -%1。").arg(effect.amount)
+                   : QString();
+    case EventEffectType::GainCoins:
+        return effect.amount > 0
+                   ? QStringLiteral("影响：Money +%1。").arg(effect.amount)
+                   : QString();
+    case EventEffectType::AddCardById: {
+        const Card card = CardLibrary::byId(effect.targetId);
+        if (!card.id().isEmpty()) {
+            return QStringLiteral("影响：打开卡牌奖励界面，可获得《%1》。").arg(card.displayName());
+        }
+        return QStringLiteral("影响：打开卡牌奖励界面，从 %1 张卡牌中选择 1 张。")
+            .arg(GameBalance::Rewards::cardChoices());
+    }
+    case EventEffectType::GainRelicById: {
+        const RelicData relic = RelicLibrary::findById(effect.targetId);
+        if (relic.id.isEmpty()) {
+            return QString();
+        }
+        if (GameState::instance().hasRelic(relic.id)) {
+            return QStringLiteral("影响：已拥有圣遗物《%1》，不会重复获得。").arg(relic.name);
+        }
+        return QStringLiteral("影响：获得圣遗物《%1》。").arg(relic.name);
+    }
+    case EventEffectType::GainPotionById: {
+        const PotionData potion = PotionLibrary::findById(effect.targetId);
+        if (potion.id.isEmpty()) {
+            return QString();
+        }
+        if (GameState::instance().potions().size() >= GameState::instance().maxPotions()) {
+            return QStringLiteral("影响：饮料栏已满，无法获得《%1》。").arg(potion.name);
+        }
+        return QStringLiteral("影响：获得饮料《%1》。").arg(potion.name);
+    }
+    case EventEffectType::None:
+        return QStringLiteral("影响：无额外影响。");
+    }
+
+    return QString();
+}
+
+inline QString effectSummaryLine(const RandomEventChoice &choice)
+{
+    const QList<RandomEventEffect> effects = choiceEffects(choice);
+    if (effects.isEmpty()) {
+        return QStringLiteral("影响：无额外影响。");
+    }
+
+    QStringList lines;
+    for (const RandomEventEffect &effect : effects) {
+        const QString line = effectSummaryLine(effect);
+        if (!line.isEmpty()) {
+            lines << line;
+        }
+    }
+    return lines.isEmpty() ? QStringLiteral("影响：无额外影响。")
+                           : lines.join(QStringLiteral("\n"));
+}
+
+inline QString choiceEffectSummary(const RandomEventChoice &choice, bool includeEventCompletionReward)
+{
+    QStringList lines;
+    const QString choiceEffect = effectSummaryLine(choice);
+    if (!choiceEffect.isEmpty()) {
+        lines << choiceEffect;
+    }
+
+    if (includeEventCompletionReward) {
+        lines << QStringLiteral("事件完成：评分 +%1，Money +%2。")
+                     .arg(GameBalance::Rewards::eventGradeScore())
+                     .arg(GameBalance::Rewards::eventCoins());
+    }
+
+    return lines.join(QStringLiteral("\n"));
+}
+
+inline bool applyEffect(const RandomEventEffect &effect, bool applyCardEffects = true)
 {
     GameState &state = GameState::instance();
 
-    switch (choice.effectType) {
+    switch (effect.effectType) {
     case EventEffectType::HealHp:
-        state.heal(choice.amount);
-        return choice.amount > 0;
+        state.heal(effect.amount);
+        return effect.amount > 0;
     case EventEffectType::LoseHp:
-        state.loseHp(choice.amount);
-        return choice.amount > 0;
+        state.loseHp(effect.amount);
+        return effect.amount > 0;
     case EventEffectType::GainCoins:
-        state.addCoins(choice.amount);
-        return choice.amount > 0;
+        state.addCoins(effect.amount);
+        return effect.amount > 0;
     case EventEffectType::AddCardById: {
-        const Card card = CardLibrary::byId(choice.targetId);
+        if (!applyCardEffects || effect.targetId.isEmpty()) {
+            return false;
+        }
+        const Card card = CardLibrary::byId(effect.targetId);
         if (card.id().isEmpty()) {
             return false;
         }
         state.addCard(card);
         return true;
     }
-    case EventEffectType::GainRelicById:
-        if (choice.targetId.isEmpty()) {
+    case EventEffectType::GainRelicById: {
+        const RelicData relic = RelicLibrary::findById(effect.targetId);
+        if (relic.id.isEmpty() || state.hasRelic(relic.id)) {
             return false;
         }
-        state.addRelicById(choice.targetId);
+        state.addRelic(relic);
         return true;
+    }
     case EventEffectType::GainPotionById:
-        if (choice.targetId.isEmpty()) {
+        if (effect.targetId.isEmpty()) {
             return false;
         }
-        return state.addPotionById(choice.targetId);
+        return state.addPotionById(effect.targetId);
     case EventEffectType::None:
         return false;
     }
 
     return false;
+}
+
+inline bool applyChoiceEffect(const RandomEventChoice &choice, bool applyCardEffects = true)
+{
+    bool applied = false;
+    const QList<RandomEventEffect> effects = choiceEffects(choice);
+    for (const RandomEventEffect &effect : effects) {
+        applied = applyEffect(effect, applyCardEffects) || applied;
+    }
+    return applied;
+}
+
+inline bool choiceHasCardReward(const RandomEventChoice &choice)
+{
+    const QList<RandomEventEffect> effects = choiceEffects(choice);
+    for (const RandomEventEffect &effect : effects) {
+        if (effect.effectType == EventEffectType::AddCardById) {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline QString cardRewardTargetId(const RandomEventChoice &choice)
+{
+    const QList<RandomEventEffect> effects = choiceEffects(choice);
+    for (const RandomEventEffect &effect : effects) {
+        if (effect.effectType == EventEffectType::AddCardById) {
+            return effect.targetId;
+        }
+    }
+    return QString();
 }
 
 inline RandomEventChoice makeChoice(const QString &text,
@@ -126,7 +280,33 @@ inline RandomEventChoice makeChoice(const QString &text,
     choice.effectType = effectType;
     choice.amount = amount;
     choice.targetId = targetId;
+    if (effectType != EventEffectType::None) {
+        choice.effects << makeEffect(effectType, amount, targetId);
+    }
     choice.effectHint = effectHint;
+    return choice;
+}
+
+inline RandomEventChoice makeChoiceWithEffects(const QString &text,
+                                               const QString &resultText,
+                                               const QList<RandomEventEffect> &effects,
+                                               const QString &effectHint = QString())
+{
+    RandomEventChoice choice;
+    choice.text = text;
+    choice.resultText = resultText;
+    choice.effects = effects;
+    choice.effectHint = effectHint;
+
+    for (const RandomEventEffect &effect : effects) {
+        if (effect.effectType != EventEffectType::None) {
+            choice.effectType = effect.effectType;
+            choice.amount = effect.amount;
+            choice.targetId = effect.targetId;
+            break;
+        }
+    }
+
     return choice;
 }
 
@@ -178,15 +358,15 @@ inline RandomEventData createLibraryNightEvent()
             << makeChoice(GameText::EventText::previewChoiceB(),
                           QStringLiteral("你及时回宿舍休息，心情稍微恢复了一些。"),
                           EventEffectType::HealHp,
-                          8,
+                          GameBalance::Events::libraryNightHeal(),
                           QString(),
-                          QStringLiteral("回复 8 点心情。"))
+                          QStringLiteral("回复心情。"))
             << makeChoice(GameText::EventText::previewChoiceC(),
-                          QStringLiteral("你买到了夜宵和补给，资源点增加。"),
+                          QStringLiteral("你买到了夜宵和补给，余额增加。"),
                           EventEffectType::GainCoins,
-                          12,
+                          GameBalance::Events::libraryNightCoins(),
                           QString(),
-                          QStringLiteral("后续可接入获得 12 资源点。"));
+                          QStringLiteral("获得 Money。"));
 
     return makeEvent(QStringLiteral("library_night"),
                      GameText::EventText::previewTitle(),
@@ -211,15 +391,15 @@ inline RandomEventData createDormPowerOutageEvent()
             << makeChoice(QStringLiteral("顺势早睡"),
                           QStringLiteral("你把手机扣在桌上，决定让明天的自己接手。醒来时，心情恢复了一截。"),
                           EventEffectType::HealHp,
-                          10,
+                          GameBalance::Events::dormPowerOutageHeal(),
                           QString(),
-                          QStringLiteral("回复 10 点心情。"))
+                          QStringLiteral("回复心情。"))
             << makeChoice(QStringLiteral("下楼买应急补给"),
                           QStringLiteral("便利店门口排起了小队。你带回一点吃的和一瓶临时补给，宿舍也刚好来电。"),
                           EventEffectType::GainPotionById,
                           0,
                           PotionIds::clinicSyrup(),
-                          QStringLiteral("获得药水：校医院糖浆。"));
+                          QStringLiteral("获得饮料：可口可乐。"));
 
     return makeEvent(QStringLiteral("dorm_power_outage"),
                      QStringLiteral("宿舍停电"),
@@ -244,15 +424,15 @@ inline RandomEventData createScienceBuildingElevatorEvent()
             << makeChoice(QStringLiteral("继续等电梯"),
                           QStringLiteral("电梯终于抵达，你被人群平稳地送上楼。时间被消耗掉一点，心情也跟着掉了一些。"),
                           EventEffectType::LoseHp,
-                          5,
+                          GameBalance::Events::elevatorWaitLoseHp(),
                           QString(),
-                          QStringLiteral("失去 5 点心情。"))
+                          QStringLiteral("失去心情。"))
             << makeChoice(QStringLiteral("先买咖啡再说"),
                           QStringLiteral("你拎着咖啡冲进教室，精神像被强行重启。今天至少还能多撑一会儿。"),
                           EventEffectType::GainPotionById,
                           0,
                           PotionIds::coffeeShot(),
-                          QStringLiteral("获得药水：咖啡因冲剂。"));
+                          QStringLiteral("获得饮料：抹茶拿铁。"));
 
     return makeEvent(QStringLiteral("science_building_elevator"),
                      QStringLiteral("理科楼电梯"),
@@ -277,18 +457,50 @@ inline RandomEventData createWeimingLakeWalkEvent()
             << makeChoice(QStringLiteral("坐下放空一会儿"),
                           QStringLiteral("你没有打开任何软件，只是看着湖面发了一会儿呆。压力慢慢沉下去，呼吸也顺了。"),
                           EventEffectType::HealHp,
-                          12,
+                          GameBalance::Events::weimingLakeRestHeal(),
                           QString(),
-                          QStringLiteral("回复 12 点心情。"))
+                          QStringLiteral("回复心情。"))
             << makeChoice(QStringLiteral("收好那张票根"),
-                          QStringLiteral("票根背面写着百讲折扣信息。也许下次去商店时，它能帮你省下一点资源。"),
+                          QStringLiteral("票根背面写着物美会员信息。也许下次去超市时，它能帮你省下一点 Money。"),
                           EventEffectType::GainRelicById,
                           0,
                           RelicIds::luckyCoupon(),
-                          QStringLiteral("获得圣遗物：百讲折扣券。"));
+                          QStringLiteral("获得圣遗物：物美会员卡。"));
 
     return makeEvent(QStringLiteral("weiming_lake_walk"),
                      QStringLiteral("未名湖夜行"),
+                     storyPages,
+                     choices);
+}
+
+inline RandomEventData createStudentAffairsNewTaskEvent()
+{
+    QStringList storyPages;
+    storyPages << QStringLiteral("学工群里跳出一条新消息。部长发来一个新锅，后面跟着一句熟悉的“大家看看谁方便接一下”。")
+               << QStringLiteral("你正坐在桌边吃小番茄。屏幕亮起的那一刻，群聊安静得像被按下了暂停键，手里的小番茄也忽然显得危险起来。")
+               << QStringLiteral("你咽下嘴里的小番茄，盯着输入框，开始判断这口锅有没有自然蒸发的可能。");
+
+    QList<RandomEventEffect> volunteerEffects;
+    volunteerEffects << makeEffect(EventEffectType::LoseHp,
+                                   GameBalance::Events::studentAffairsVolunteerLoseHp())
+                     << makeEffect(EventEffectType::AddCardById);
+
+    QList<RandomEventChoice> choices;
+    choices << makeChoice(QStringLiteral("不回复，看看群里会不会有人领锅"),
+                          QStringLiteral("你继续吃小番茄，打算先观察一下局势。结果一颗小番茄的汁水溅到了手机屏幕上。\n\n你手忙脚乱地擦干手机，才发现擦拭过程中误触了输入框，往群里连发了五十多条“突突突”。群里沉默了两秒，部长回了一句：“看起来你很有激情。”最终，你不得不把这个锅领了下来。"),
+                          EventEffectType::LoseHp,
+                          GameBalance::Events::studentAffairsWaitLoseHp(),
+                          QString(),
+                          QStringLiteral("失去心情。"))
+            << makeChoice(QStringLiteral("不回复，干其他事"),
+                          QStringLiteral("你熟练地无视了部长，把手机翻面，去干其他事了。\n\n等你再打开群聊时，这口锅已经被后来的勇者领走。无事发生。"))
+            << makeChoiceWithEffects(QStringLiteral("主动领锅"),
+                                     QStringLiteral("你叹了口气，在群里回了一句“我来吧”。事情确实有点累，但推进过程中你摸清了一套新的工作流程，也算把经验装进了牌组。"),
+                                     volunteerEffects,
+                                     QStringLiteral("失去心情，并打开卡牌奖励界面。"));
+
+    return makeEvent(QStringLiteral("student_affairs_new_task"),
+                     QStringLiteral("学工群新锅"),
                      storyPages,
                      choices);
 }
@@ -299,7 +511,8 @@ inline QList<RandomEventData> allEvents()
     events << createLibraryNightEvent()
            << createDormPowerOutageEvent()
            << createScienceBuildingElevatorEvent()
-           << createWeimingLakeWalkEvent();
+           << createWeimingLakeWalkEvent()
+           << createStudentAffairsNewTaskEvent();
 
     // 新事件统一加在这里，例如：
     // events << createDormPowerOutageEvent();

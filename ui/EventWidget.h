@@ -231,6 +231,11 @@ public:
         m_choiceHandler = handler;
     }
 
+    void setShowCompletionRewards(bool showCompletionRewards)
+    {
+        m_showCompletionRewards = showCompletionRewards;
+    }
+
 protected:
     void paintEvent(QPaintEvent *event) override
     {
@@ -288,6 +293,14 @@ private:
 
     void showChoicesOrFinish()
     {
+        if (m_selectedChoiceIndex >= 0) {
+            m_waitingForFinish = true;
+            m_resultLabel->clear();
+            m_continueButton->setText(GameText::EventText::finishEventButton());
+            m_continueButton->show();
+            return;
+        }
+
         if (m_event.choices.isEmpty()) {
             m_waitingForFinish = true;
             m_resultLabel->clear();
@@ -310,15 +323,28 @@ private:
         const QString resultText = choice.resultText.isEmpty()
                                        ? GameText::EventText::resultFormat().arg(choice.text)
                                        : choice.resultText;
+        QStringList resultPages;
         if (!resultText.isEmpty()) {
-            m_storyPages << resultText;
-            m_currentPageIndex = m_storyPages.size() - 1;
+            resultPages << splitResultPages(resultText);
+        }
+
+        const QString effectSummary = EventLibrary::choiceEffectSummary(choice, m_showCompletionRewards);
+        if (!effectSummary.isEmpty()) {
+            resultPages << effectSummary;
+        }
+
+        if (!resultPages.isEmpty()) {
+            const int firstResultPageIndex = m_storyPages.size();
+            m_storyPages << resultPages;
+            m_currentPageIndex = firstResultPageIndex;
             updateStoryText();
         }
 
-        m_waitingForFinish = true;
         m_resultLabel->clear();
-        m_continueButton->setText(GameText::EventText::finishEventButton());
+        m_waitingForFinish = (m_currentPageIndex + 1 >= m_storyPages.size());
+        m_continueButton->setText(m_waitingForFinish
+                                      ? GameText::EventText::finishEventButton()
+                                      : GameText::EventText::continueButton());
         m_continueButton->show();
     }
 
@@ -410,6 +436,23 @@ private:
         }
     }
 
+    QStringList splitResultPages(const QString &text) const
+    {
+        QString normalized = text;
+        normalized.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+        normalized.replace(QStringLiteral("\r"), QStringLiteral("\n"));
+
+        QStringList pages;
+        const QStringList chunks = normalized.split(QStringLiteral("\n\n"), Qt::SkipEmptyParts);
+        for (const QString &chunk : chunks) {
+            const QString page = chunk.trimmed();
+            if (!page.isEmpty()) {
+                pages << page;
+            }
+        }
+        return pages;
+    }
+
     QString resolveAssetPath(const QString &path) const
     {
         if (path.isEmpty() || QFileInfo(path).isAbsolute()) {
@@ -456,6 +499,7 @@ private:
     int m_selectedChoiceIndex = -1;
     bool m_waitingForFinish = false;
     bool m_finished = false;
+    bool m_showCompletionRewards = false;
     std::function<void(int, const RandomEventChoice &)> m_choiceHandler;
 };
 

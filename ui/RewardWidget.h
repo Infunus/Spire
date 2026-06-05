@@ -73,6 +73,7 @@ public:
 
     void openRewards()
     {
+        m_titleLabel->setText(GameText::RewardText::pageTitle());
         GameState::instance().addCoins(GameBalance::Rewards::rewardScreenCoins());
         const bool potionAdded = GameState::instance().addPotion(PotionLibrary::createCoffeeShot());
         m_rewardLabel->setText(potionAdded
@@ -86,6 +87,30 @@ public:
             const int index = GameRandom::instance().bounded(pool.size());
             m_choices.append(pool.takeAt(index));
         }
+        rebuildCardChoices();
+    }
+
+    void openEventCardReward(const QString &cardId, const QString &message)
+    {
+        m_titleLabel->setText(QStringLiteral("卡牌奖励"));
+        m_rewardLabel->setText(message);
+        m_choices.clear();
+
+        if (!cardId.isEmpty()) {
+            const Card card = CardLibrary::byId(cardId);
+            if (!card.id().isEmpty()) {
+                m_choices << card;
+            }
+        }
+
+        if (m_choices.isEmpty()) {
+            QList<Card> pool = CardLibrary::shopCards();
+            while (!pool.isEmpty() && m_choices.size() < GameBalance::Rewards::cardChoices()) {
+                const int index = GameRandom::instance().bounded(pool.size());
+                m_choices.append(pool.takeAt(index));
+            }
+        }
+
         rebuildCardChoices();
     }
 

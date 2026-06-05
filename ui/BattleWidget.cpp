@@ -28,15 +28,42 @@
 #include <QResizeEvent>
 #include <QSizePolicy>
 #include <QStringList>
-#include <QStyle>
-#include <QStyleOptionButton>
-#include <QStylePainter>
 #include <QTextEdit>
 #include <QTimer>
 #include <QVBoxLayout>
 
 namespace
 {
+QString findProjectAssetPath(const QString &relativePath)
+{
+    if (relativePath.isEmpty() || QFileInfo(relativePath).isAbsolute()) {
+        return relativePath;
+    }
+
+    QStringList candidates;
+    auto addCandidatesFrom = [&candidates, &relativePath](const QDir &startDir) {
+        QDir dir(startDir);
+        for (int i = 0; i < 8; ++i) {
+            candidates << dir.filePath(relativePath);
+            candidates << dir.filePath(QStringLiteral("Spire/%1").arg(relativePath));
+            if (!dir.cdUp()) {
+                break;
+            }
+        }
+    };
+
+    addCandidatesFrom(QDir(QCoreApplication::applicationDirPath()));
+    addCandidatesFrom(QDir::current());
+    addCandidatesFrom(QDir(QFileInfo(QString::fromUtf8(__FILE__)).absolutePath()));
+
+    for (const QString &candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+    return relativePath;
+}
+
 QString battleStatusShortText(const QString &name)
 {
     if (name == GameText::Battle::playerStrengthStatusName()) {
@@ -85,15 +112,60 @@ QString battleStatusToolTip(const QString &name, int value)
     }
     return GameText::Battle::statusTooltip(name, value, rulesText);
 }
+
+QString defaultCardImagePath(const Card &card)
+{
+    if (!card.imagePath().isEmpty()) {
+        return card.imagePath();
+    }
+
+    // 旧牌组里可能已经创建了没有 imagePath 的 Card，这里按 id 补默认图，避免手牌空图。
+    if (card.id() == CardIds::strike()) {
+        return GameText::CardText::strikeImage();
+    }
+    if (card.id() == CardIds::defend()) {
+        return GameText::CardText::defendImage();
+    }
+    if (card.id() == CardIds::bash()) {
+        return GameText::CardText::bashImage();
+    }
+    if (card.id() == CardIds::inflame()) {
+        return GameText::CardText::inflameImage();
+    }
+    if (card.id() == CardIds::heavyBlade()) {
+        return GameText::CardText::heavyBladeImage();
+    }
+    if (card.id() == CardIds::pommel()) {
+        return GameText::CardText::pommelImage();
+    }
+    if (card.id() == CardIds::shrug()) {
+        return GameText::CardText::shrugImage();
+    }
+    if (card.id() == CardIds::anger()) {
+        return GameText::CardText::angerImage();
+    }
+    if (card.id() == CardIds::flex()) {
+        return GameText::CardText::flexImage();
+    }
+    if (card.id() == CardIds::cleave()) {
+        return GameText::CardText::cleaveImage();
+    }
+    return QString();
+}
 }
 
 class BattleCardButton : public QPushButton
 {
 public:
-    explicit BattleCardButton(const QString &text, QWidget *parent = nullptr)
-        : QPushButton(text, parent),
-          m_angle(0)
+    explicit BattleCardButton(const Card &card, QWidget *parent = nullptr)
+        : QPushButton(parent),
+          m_card(card),
+          m_artPath(defaultCardImagePath(card)),
+          m_angle(0),
+          m_art(findProjectAssetPath(m_artPath))
     {
+        setMouseTracking(true);
+        setText(QString());
     }
 
     void setPaintAngle(qreal value)
@@ -110,20 +182,127 @@ protected:
     {
         Q_UNUSED(event);
 
-        QStyleOptionButton option;
-        initStyleOption(&option);
-
-        QStylePainter painter(this);
+        QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setRenderHint(QPainter::SmoothPixmapTransform);
         painter.translate(rect().center());
         painter.rotate(m_angle);
         painter.translate(-rect().center());
-        painter.drawControl(QStyle::CE_PushButton, option);
+
+        const QRectF cardRect = rect().adjusted(4, 4, -4, -4);
+        const bool active = isEnabled();
+        const bool hovered = underMouse() && active;
+
+        QPainterPath cardPath;
+        cardPath.addRoundedRect(cardRect, 17, 17);
+
+        QLinearGradient cardFill(cardRect.topLeft(), cardRect.bottomLeft());
+        cardFill.setColorAt(0.0, active ? QColor(45, 107, 132) : QColor(87, 84, 78));
+        cardFill.setColorAt(0.12, active ? QColor(245, 238, 206) : QColor(158, 151, 136));
+        cardFill.setColorAt(0.23, active ? QColor(215, 176, 96) : QColor(126, 115, 96));
+        cardFill.setColorAt(0.72, active ? QColor(116, 63, 34) : QColor(87, 76, 65));
+        cardFill.setColorAt(1.0, active ? QColor(239, 204, 137) : QColor(130, 119, 100));
+        painter.fillPath(cardPath, cardFill);
+
+        painter.setPen(QPen(hovered ? QColor(70, 225, 235)
+                                    : (active ? QColor(111, 73, 40) : QColor(78, 70, 61)),
+                            hovered ? 5 : 4));
+        painter.drawPath(cardPath);
+
+        const QRectF titleRect(cardRect.left() + 25, cardRect.top() + 10, cardRect.width() - 36, 30);
+        QPainterPath titlePath;
+        titlePath.addRoundedRect(titleRect, 9, 9);
+        painter.fillPath(titlePath, QColor(255, 238, 182, 224));
+        painter.setPen(QPen(QColor(105, 63, 38), 2));
+        painter.drawPath(titlePath);
+
+        QFont titleFont = painter.font();
+        titleFont.setPointSize(9);
+        titleFont.setBold(true);
+        painter.setFont(titleFont);
+        painter.setPen(QColor(39, 27, 18));
+        painter.drawText(titleRect.adjusted(4, 0, -4, 0),
+                         Qt::AlignCenter | Qt::TextWordWrap,
+                         m_card.displayName());
+
+        const QPointF costCenter(cardRect.left() + 24, cardRect.top() + 24);
+        QRadialGradient costFill(costCenter, 18);
+        costFill.setColorAt(0.0, QColor(255, 251, 210));
+        costFill.setColorAt(0.55, QColor(238, 122, 44));
+        costFill.setColorAt(1.0, QColor(153, 39, 30));
+        painter.setBrush(costFill);
+        painter.setPen(QPen(QColor(255, 223, 103), 3));
+        painter.drawEllipse(costCenter, 17, 17);
+
+        QFont costFont = painter.font();
+        costFont.setPointSize(12);
+        costFont.setBold(true);
+        painter.setFont(costFont);
+        painter.setPen(Qt::white);
+        painter.drawText(QRectF(costCenter.x() - 14, costCenter.y() - 13, 28, 26),
+                         Qt::AlignCenter,
+                         QString::number(m_card.cost()));
+
+        if (m_art.isNull() && !m_artPath.isEmpty()) {
+            m_art.load(findProjectAssetPath(m_artPath));
+        }
+
+        const QRectF artRect(cardRect.left() + 13, cardRect.top() + 45, cardRect.width() - 26, cardRect.height() * 0.46);
+        QPainterPath artPath;
+        artPath.addRoundedRect(artRect, 10, 10);
+        painter.save();
+        painter.setClipPath(artPath);
+        if (!m_art.isNull()) {
+            const QPixmap scaledArt = m_art.scaled(artRect.size().toSize(),
+                                                   Qt::KeepAspectRatioByExpanding,
+                                                   Qt::SmoothTransformation);
+            const QRectF sourceRect((scaledArt.width() - artRect.width()) / 2.0,
+                                    (scaledArt.height() - artRect.height()) / 2.0,
+                                    artRect.width(),
+                                    artRect.height());
+            painter.drawPixmap(artRect, scaledArt, sourceRect);
+        } else {
+            QLinearGradient fallback(artRect.topLeft(), artRect.bottomRight());
+            fallback.setColorAt(0.0, QColor(238, 218, 150));
+            fallback.setColorAt(1.0, QColor(80, 59, 50));
+            painter.fillPath(artPath, fallback);
+        }
+        painter.restore();
+        painter.setPen(QPen(QColor(91, 55, 37), 3));
+        painter.drawPath(artPath);
+
+        const QRectF textRect(cardRect.left() + 13,
+                              artRect.bottom() + 8,
+                              cardRect.width() - 26,
+                              cardRect.bottom() - artRect.bottom() - 17);
+        QPainterPath textPath;
+        textPath.addRoundedRect(textRect, 9, 9);
+        QLinearGradient textFill(textRect.topLeft(), textRect.bottomLeft());
+        textFill.setColorAt(0.0, QColor(255, 241, 198, 232));
+        textFill.setColorAt(1.0, QColor(227, 178, 104, 232));
+        painter.fillPath(textPath, textFill);
+        painter.setPen(QPen(QColor(111, 66, 39), 2));
+        painter.drawPath(textPath);
+
+        QFont descFont = painter.font();
+        descFont.setPointSize(8);
+        descFont.setBold(true);
+        painter.setFont(descFont);
+        painter.setPen(QColor(42, 26, 17));
+        painter.drawText(textRect.adjusted(7, 5, -7, -5),
+                         Qt::AlignCenter | Qt::TextWordWrap,
+                         m_card.description());
+
+        if (!active) {
+            painter.fillPath(cardPath, QColor(45, 41, 38, 118));
+        }
     }
 
 private:
+    Card m_card;
+    QString m_artPath;
     qreal m_angle;
+    QPixmap m_art;
 };
 
 class PlayerPortraitWidget : public QWidget
@@ -357,7 +536,7 @@ public:
     void setEnemy(const Enemy &enemy)
     {
         if (!enemy.imagePath().isEmpty()) {
-            const QPixmap enemyPixmap(enemy.imagePath());
+            const QPixmap enemyPixmap(findProjectAssetPath(enemy.imagePath()));
             if (!enemyPixmap.isNull()) {
                 m_portraitLabel->setText(QString());
                 m_portraitLabel->setPixmap(enemyPixmap.scaled(m_portraitLabel->size(),
@@ -642,7 +821,8 @@ QWidget *BattleWidget::createControlStrip()
     QHBoxLayout *layout = new QHBoxLayout(strip);
     layout->setContentsMargins(12, 7, 12, 7);
     layout->setSpacing(8);
-    m_titleLabel->setMinimumWidth(250);
+    m_titleLabel->setMinimumWidth(130);
+    m_titleLabel->setMaximumWidth(180);
     layout->addWidget(m_titleLabel);
     layout->addWidget(m_playerInfoLabel, 1);
     layout->addWidget(m_energyCrystalWidget);
@@ -768,13 +948,7 @@ void BattleWidget::startBattle()
     m_mapCallbackScheduled = false;
 
     setBossBattle(m_battleNumber >= GameBalance::Battle::bossBattleNumber());
-    QString enemyTitle = GameText::Battle::defaultEnemyName();
-    if (m_enemies.size() == 1) {
-        enemyTitle = m_enemies.first().name();
-    } else if (m_enemies.size() > 1) {
-        enemyTitle = QStringLiteral("%1 等 %2 个敌人").arg(m_enemies.first().name()).arg(m_enemies.size());
-    }
-    m_titleLabel->setText(GameText::Battle::battleTitleFormat().arg(m_battleNumber).arg(enemyTitle));
+    m_titleLabel->setText(GameText::Battle::battleTitleFormat().arg(m_battleNumber));
     beginPlayerTurn();
     applyRelicsAtBattleStart();
     refreshUi();
@@ -803,37 +977,12 @@ void BattleWidget::rebuildHandButtons()
 
     for (int i = 0; i < m_hand.size(); ++i) {
         const Card card = m_hand.cardAt(i);
-        BattleCardButton *button = new BattleCardButton(card.buttonText(), m_handPanel);
+        BattleCardButton *button = new BattleCardButton(card, m_handPanel);
         button->setProperty("cardIndex", i);
         button->setCursor(Qt::PointingHandCursor);
         button->setToolTip(cardLine(card));
         button->setEnabled(m_playerTurn && !m_battleEnded && m_energy >= card.cost());
         button->installEventFilter(this);
-
-        const QString borderColor = m_energy >= card.cost() ? QStringLiteral("#6f4928")
-                                                            : QStringLiteral("#8b332c");
-        button->setStyleSheet(QStringLiteral(
-            "QPushButton {"
-            "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "                              stop:0 #2f6f89, stop:0.14 #e8f8f8, stop:0.22 #d8bc7c, stop:0.58 #8a4a2b, stop:1 #f3d99c);"
-            "  border: 4px solid %1;"
-            "  border-radius: 17px;"
-            "  color: #24170f;"
-            "  font-size: 13px;"
-            "  font-weight: 900;"
-            "  text-align: center;"
-            "  padding: 10px 8px;"
-            "}"
-            "QPushButton:hover {"
-            "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "                              stop:0 #5ed7e6, stop:0.16 #fffaf0, stop:0.58 #ffd979, stop:1 #d28c37);"
-            "  border-color: #39dce8;"
-            "}"
-            "QPushButton:disabled {"
-            "  background: #7b756a;"
-            "  border-color: #4e463d;"
-            "  color: #d0c4b2;"
-            "}").arg(borderColor));
         button->show();
         button->raise();
         m_handButtons.append(button);

@@ -62,7 +62,7 @@ namespace GameText
         inline QString bossName() { return QStringLiteral("Boss"); }
         inline QString playerName() { return QStringLiteral("玩家"); }
         inline QString relicTitle() { return QStringLiteral("燕园加成"); }
-        inline QString potionTitle() { return QStringLiteral("药水"); }
+        inline QString potionTitle() { return QStringLiteral("饮料"); }
 
         inline QString confirmCardButton() { return QStringLiteral("确认出牌"); }
         inline QString endTurnButton() { return QStringLiteral("结束回合"); }
@@ -81,12 +81,12 @@ namespace GameText
             return QStringLiteral("下回合攻击 %1").arg(GameBalance::EnemyStatus::fallbackAttack());
         }
 
-        inline QString battleTitleFormat() { return QStringLiteral("第 %1 战 · %2"); }
+        inline QString battleTitleFormat() { return QStringLiteral("第 %1 战"); }
         inline QString runClearTitle() { return QStringLiteral("通关 · 总评 A"); }
         inline QString battleWinFormat() { return QStringLiteral("胜利 · 击败 %1 个敌人"); }
         inline QString battleFailTitle() { return QStringLiteral("喜报：您已被退学！"); }
         inline QString victoryTip() { return QStringLiteral("完成作业！助教正在批阅……"); }
-        inline QString failTip() { return QStringLiteral("心情归零，本次修读失败。"); }
+        inline QString failTip() { return QStringLiteral("心情归零，本次修读失败"); }
 
         inline QString playerHpFormat() { return QStringLiteral("心情 %1/%2"); }
         inline QString enemyHpFormat() { return QStringLiteral("任务量 %1/%2"); }
@@ -98,10 +98,10 @@ namespace GameText
         }
 
         inline QString playerBlockStatusName() { return QStringLiteral("抗压值"); }
-        inline QString playerBlockStatusRules() { return QStringLiteral("格挡：先抵消敌人造成的心情损失。"); }
+        inline QString playerBlockStatusRules() { return QStringLiteral("抗压值：先抵消敌人造成的心情损失"); }
         inline QString playerStrengthStatusName() { return QStringLiteral("效率值"); }
         inline QString playerStrengthStatusShort() { return QStringLiteral("效"); }
-        inline QString playerStrengthStatusRules() { return QStringLiteral("力量：你的攻击牌造成的任务量增加。"); }
+        inline QString playerStrengthStatusRules() { return QStringLiteral("效率值：你的攻击牌造成的任务量增加"); }
         inline QString statusTooltip(const QString &name, int value, const QString &rulesText)
         {
             return QStringLiteral("%1 x%2\n%3").arg(name).arg(value).arg(rulesText);
@@ -114,7 +114,7 @@ namespace GameText
         inline QString drawPileButtonFormat() { return QStringLiteral("抽牌堆 %1"); }
         inline QString discardPileButtonFormat() { return QStringLiteral("弃牌堆 %1"); }
         inline QString exhaustPileButtonFormat() { return QStringLiteral("消耗堆 %1"); }
-        inline QString emptyPileText() { return QStringLiteral("这里暂时没有牌。"); }
+        inline QString emptyPileText() { return QStringLiteral("这里暂时没有牌"); }
         inline QString exhaustTag() { return QStringLiteral("消耗"); }
 
         inline QString potionEmptyText() { return QStringLiteral("空"); }
@@ -122,7 +122,7 @@ namespace GameText
         {
             return QStringLiteral("%1\n拖动到目标使用").arg(description);
         }
-        inline QString handTipText() { return QStringLiteral("拖动卡牌到敌人身上出牌。"); }
+        inline QString handTipText() { return QStringLiteral(""); }
         inline QString selectedCardTipFormat() { return QStringLiteral("已选择：%1"); }
     }
 
@@ -135,12 +135,12 @@ namespace GameText
         inline QString strikeName() { return QStringLiteral("与作业战斗！"); }
         inline QString strikeDescription(int damage) { return QStringLiteral("完成 %1 点任务量").arg(damage); }
         inline QString strikeDescription() { return strikeDescription(GameBalance::Cards::strike().damage); }
-        inline QString strikeImage() { return QString(); }
+        inline QString strikeImage() { return QStringLiteral("resources/cards/card_strike_homework_battle.png"); }
 
         inline QString defendName() { return QStringLiteral("刷会儿b站"); }
         inline QString defendDescription(int block) { return QStringLiteral("获得 %1 点抗压值").arg(block); }
         inline QString defendDescription() { return defendDescription(GameBalance::Cards::defend().block); }
-        inline QString defendImage() { return QString(); }
+        inline QString defendImage() { return QStringLiteral("resources/cards/card_defend_video_break.png"); }
 
         inline QString bashName() { return QStringLiteral("这题我见过！"); }
         inline QString bashDescription(int damage, int vulnerable)
@@ -151,7 +151,7 @@ namespace GameText
         {
             return bashDescription(GameBalance::Cards::bash().damage, GameBalance::Cards::bash().vulnerable);
         }
-        inline QString bashImage() { return QString(); }
+        inline QString bashImage() { return QStringLiteral("resources/cards/card_bash_seen_problem.png"); }
 
         inline QString inflameName() { return QStringLiteral("思路打开"); }
         inline QString inflameDescription(int strengthGain)
@@ -162,7 +162,7 @@ namespace GameText
         {
             return inflameDescription(GameBalance::Cards::inflame().strengthGain);
         }
-        inline QString inflameImage() { return QString(); }
+        inline QString inflameImage() { return QStringLiteral("resources/cards/card_inflame_idea_open.png"); }
 
         inline QString heavyBladeName() { return QStringLiteral("这就是心流？"); }
         inline QString heavyBladeDescription(int damage, int strengthMultiplier)
@@ -176,7 +176,7 @@ namespace GameText
             return heavyBladeDescription(GameBalance::Cards::heavyBlade().damage,
                                          GameBalance::Cards::heavyBlade().strengthMultiplier);
         }
-        inline QString heavyBladeImage() { return QString(); }
+        inline QString heavyBladeImage() { return QStringLiteral("resources/cards/card_heavy_blade_flow.png"); }
 
         inline QString pommelName() { return QStringLiteral("我觉得我会了"); }
         inline QString pommelDescription(int damage, int draw)
@@ -187,7 +187,7 @@ namespace GameText
         {
             return pommelDescription(GameBalance::Cards::pommel().damage, GameBalance::Cards::pommel().draw);
         }
-        inline QString pommelImage() { return QString(); }
+        inline QString pommelImage() { return QStringLiteral("resources/cards/card_pommel_i_get_it.png"); }
 
         inline QString shrugName() { return QStringLiteral("原神，启动！"); }
         inline QString shrugDescription(int block, int draw)
@@ -198,7 +198,7 @@ namespace GameText
         {
             return shrugDescription(GameBalance::Cards::shrug().block, GameBalance::Cards::shrug().draw);
         }
-        inline QString shrugImage() { return QString(); }
+        inline QString shrugImage() { return QStringLiteral("resources/cards/card_shrug_game_break.png"); }
 
         inline QString angerName() { return QStringLiteral("灵感，稍纵即逝！"); }
         inline QString angerDescription(int damage)
@@ -206,7 +206,7 @@ namespace GameText
             return QStringLiteral("完成 %1 点任务量\n不消耗精力").arg(damage);
         }
         inline QString angerDescription() { return angerDescription(GameBalance::Cards::anger().damage); }
-        inline QString angerImage() { return QString(); }
+        inline QString angerImage() { return QStringLiteral("resources/cards/card_anger_flash_inspiration.png"); }
 
         inline QString flexName() { return QStringLiteral("来根士力架！"); }
         inline QString flexDescription(int strengthGain, int draw)
@@ -217,12 +217,12 @@ namespace GameText
         {
             return flexDescription(GameBalance::Cards::flex().strengthGain, GameBalance::Cards::flex().draw);
         }
-        inline QString flexImage() { return QString(); }
+        inline QString flexImage() { return QStringLiteral("resources/cards/card_flex_energy_bar.png"); }
 
         inline QString cleaveName() { return QStringLiteral("今晚必拿下"); }
         inline QString cleaveDescription(int damage) { return QStringLiteral("完成 %1 点任务量").arg(damage); }
         inline QString cleaveDescription() { return cleaveDescription(GameBalance::Cards::cleave().damage); }
-        inline QString cleaveImage() { return QString(); }
+        inline QString cleaveImage() { return QStringLiteral("resources/cards/card_cleave_tonight_clear.png"); }
     }
 
     // 敌人文本和图片路径。
@@ -237,44 +237,44 @@ namespace GameText
 
         inline QString attackIntentRules(int damage)
         {
-            return QStringLiteral("攻击：敌人行动时会让玩家失去 %1 点心情。").arg(damage);
+            return QStringLiteral("破坏心情：敌人行动时会让玩家失去 %1 点心情").arg(damage);
         }
         inline QString healIntentRules(int amount)
         {
-            return QStringLiteral("回复：敌人行动时恢复 %1 点任务量。").arg(amount);
+            return QStringLiteral("回复：敌人行动时恢复 %1 点任务量").arg(amount);
         }
         inline QString buffIntentRules(int amount)
         {
-            return QStringLiteral("力量：敌人后续攻击伤害增加 %1。").arg(amount);
+            return QStringLiteral("压力值：敌人后续攻击伤害增加 %1").arg(amount);
         }
         inline QString blockIntentRules(int amount)
         {
-            return QStringLiteral("格挡：敌人行动时获得 %1 点护甲，先抵消受到的任务量。").arg(amount);
+            return QStringLiteral("复杂度：敌人行动时获得 %1 点护甲，先抵消受到的任务量").arg(amount);
         }
         inline QString attackAndBuffIntentRules(int damage, int strength)
         {
-            return QStringLiteral("攻击 + 力量：先让玩家失去 %1 点心情，再让后续攻击伤害增加 %2。")
+            return QStringLiteral("先让玩家失去 %1 点心情，再让后续攻击伤害增加 %2")
                 .arg(damage)
                 .arg(strength);
         }
         inline QString attackAndBlockIntentRules(int damage, int block)
         {
-            return QStringLiteral("攻击 + 格挡：先让玩家失去 %1 点心情，再获得 %2 点护甲。")
+            return QStringLiteral("先让玩家失去 %1 点心情，再获得 %2 点护甲")
                 .arg(damage)
                 .arg(block);
         }
 
         inline QString weakStatusName() { return QStringLiteral("疲劳"); }
         inline QString weakStatusShort() { return QStringLiteral("疲"); }
-        inline QString weakStatusRules() { return QStringLiteral("虚弱：攻击造成的伤害降低。"); }
+        inline QString weakStatusRules() { return QStringLiteral("虚弱：攻击造成的伤害降低"); }
         inline QString vulnerableStatusName() { return QStringLiteral("破防"); }
         inline QString vulnerableStatusShort() { return QStringLiteral("破"); }
-        inline QString vulnerableStatusRules() { return QStringLiteral("易伤：受到的伤害提高约 50%。"); }
+        inline QString vulnerableStatusRules() { return QStringLiteral("破防：受到的伤害提高 50%"); }
         inline QString strengthStatusName() { return QStringLiteral("压力值"); }
         inline QString strengthStatusShort() { return QStringLiteral("压"); }
-        inline QString strengthStatusRules() { return QStringLiteral("力量：后续攻击伤害增加。"); }
+        inline QString strengthStatusRules() { return QStringLiteral("后续攻击伤害增加"); }
         inline QString blockStatusName() { return QStringLiteral("复杂度"); }
-        inline QString blockStatusRules() { return QStringLiteral("格挡：先抵消受到的任务量。"); }
+        inline QString blockStatusRules() { return QStringLiteral("先抵消受到的任务量"); }
 
         inline QString weakStatusFormat() { return weakStatusName() + QStringLiteral("%1"); }
         inline QString vulnerableStatusFormat() { return vulnerableStatusName() + QStringLiteral("%1"); }
@@ -285,32 +285,32 @@ namespace GameText
 
         inline QString campusCultistName() { return QStringLiteral("高数作业"); }
         inline QString campusCultistDescription() { return QStringLiteral("数学不会那就是真不会"); }
-        inline QString campusCultistImage() { return QString(); }
+        inline QString campusCultistImage() { return QStringLiteral("resources/enemies/enemy_gaoshu_homework.png"); }
 
         inline QString homeworkWormName() { return QStringLiteral("POJ习题"); }
         inline QString homeworkWormDescription()
         {
             return QStringLiteral("邪恶的编程题！");
         }
-        inline QString homeworkWormImage() { return QString(); }
+        inline QString homeworkWormImage() { return QStringLiteral("resources/enemies/enemy_poj_problem.png"); }
 
         inline QString ddlSlimeName() { return QStringLiteral("水课作业"); }
         inline QString ddlSlimeDescription()
         {
-            return QStringLiteral("水课还是好糊弄的");
+            return QStringLiteral("水课还是好糊弄的……吧");
         }
-        inline QString ddlSlimeImage() { return QString(); }
+        inline QString ddlSlimeImage() { return QStringLiteral("resources/enemies/enemy_easy_course_slime.png"); }
 
         inline QString projectNobName() { return QStringLiteral("小组汇报"); }
         inline QString projectNobDescription() { return QStringLiteral("“所以我们的主题选什么好呢……？”“谁会做PPT？”“交给AI算了……”“……我不上台讲，别的都好说”“诶？大家怎么都做完了，记得把我名字加上去”……"); }
-        inline QString projectNobImage() { return QString(); }
+        inline QString projectNobImage() { return QStringLiteral("resources/enemies/enemy_group_presentation.png"); }
 
         inline QString finalExamName() { return QStringLiteral("期末考试"); }
         inline QString finalExamDescription()
         {
             return QStringLiteral("不调分！！");
         }
-        inline QString finalExamImage() { return QString(); }
+        inline QString finalExamImage() { return QStringLiteral("resources/enemies/enemy_final_exam.png"); }
     }
 
     // 随机事件 UI 固定文案。具体事件内容在 EventLibrary.h。
@@ -321,7 +321,7 @@ namespace GameText
         inline QString defaultTitle() { return QStringLiteral("未命名事件"); }
         inline QString defaultBody()
         {
-            return QStringLiteral("在这里填写事件正文。可以写成北大校园生活里的一个选择场景。");
+            return QStringLiteral("在这里填写事件正文。可以写成北大校园生活里的一个选择场景");
         }
 
         inline QString continueButton() { return QStringLiteral("继续"); }
@@ -337,16 +337,16 @@ namespace GameText
         }
         inline QString previewChoiceA() { return QStringLiteral("继续自习，获得一张学习牌"); }
         inline QString previewChoiceB() { return QStringLiteral("回宿舍休息，回复少量心情"); }
-        inline QString previewChoiceC() { return QStringLiteral("去便利店补给，获得临时资源"); }
+        inline QString previewChoiceC() { return QStringLiteral("去便利店补给，获得 Money"); }
     }
 
     // 圣遗物文本。数值来自 GameBalance::Relics。
     namespace RelicText
     {
-        inline QString yanyuanMealCardName() { return QStringLiteral("燕园饭卡"); }
+        inline QString yanyuanMealCardName() { return QStringLiteral("原神月卡"); }
         inline QString yanyuanMealCardDescription(int heal)
         {
-            return QStringLiteral("战斗胜利后回复 %1 点心情。").arg(heal);
+            return QStringLiteral("战斗胜利后回复 %1 点心情").arg(heal);
         }
         inline QString yanyuanMealCardDescription()
         {
@@ -354,10 +354,10 @@ namespace GameText
         }
         inline QString yanyuanMealCardImage() { return QString(); }
 
-        inline QString boyaTowerBadgeName() { return QStringLiteral("博雅塔徽章"); }
+        inline QString boyaTowerBadgeName() { return QStringLiteral("信科鼠标垫"); }
         inline QString boyaTowerBadgeDescription(int strength)
         {
-            return QStringLiteral("每场战斗开始时，攻击强度 +%1。").arg(strength);
+            return QStringLiteral("每场战斗开始时，效率值 +%1").arg(strength);
         }
         inline QString boyaTowerBadgeDescription()
         {
@@ -365,10 +365,10 @@ namespace GameText
         }
         inline QString boyaTowerBadgeImage() { return QString(); }
 
-        inline QString librarySeatName() { return QStringLiteral("图书馆座位"); }
+        inline QString librarySeatName() { return QStringLiteral("PKU棒球服"); }
         inline QString librarySeatDescription(int block)
         {
-            return QStringLiteral("每场战斗开始时，获得 %1 点格挡。").arg(block);
+            return QStringLiteral("每场战斗开始时，获得 %1 点抗压值").arg(block);
         }
         inline QString librarySeatDescription()
         {
@@ -376,10 +376,10 @@ namespace GameText
         }
         inline QString librarySeatImage() { return QString(); }
 
-        inline QString packedSchoolbagName() { return QStringLiteral("满载书包"); }
+        inline QString packedSchoolbagName() { return QStringLiteral("红色的帆布袋"); }
         inline QString packedSchoolbagDescription(int draw)
         {
-            return QStringLiteral("每场战斗开始时，额外抽 %1 张牌。").arg(draw);
+            return QStringLiteral("每场战斗开始时，额外抽 %1 张牌").arg(draw);
         }
         inline QString packedSchoolbagDescription()
         {
@@ -387,10 +387,10 @@ namespace GameText
         }
         inline QString packedSchoolbagImage() { return QString(); }
 
-        inline QString luckyCouponName() { return QStringLiteral("百讲折扣券"); }
+        inline QString luckyCouponName() { return QStringLiteral("物美会员卡"); }
         inline QString luckyCouponDescription(int discountPercent)
         {
-            return QStringLiteral("商店里所有商品价格降低 %1%。").arg(discountPercent);
+            return QStringLiteral("物美里所有商品价格降低 %1%").arg(discountPercent);
         }
         inline QString luckyCouponDescription()
         {
@@ -402,10 +402,10 @@ namespace GameText
     // 药水文本。数值来自 GameBalance::Potions。
     namespace PotionText
     {
-        inline QString coffeeShotName() { return QStringLiteral("咖啡因冲剂"); }
+        inline QString coffeeShotName() { return QStringLiteral("抹茶拿铁"); }
         inline QString coffeeShotDescription(int damage)
         {
-            return QStringLiteral("对敌人造成 %1 点伤害。").arg(damage);
+            return QStringLiteral("对指定敌人完成 %1 点任务量").arg(damage);
         }
         inline QString coffeeShotDescription()
         {
@@ -413,10 +413,10 @@ namespace GameText
         }
         inline QString coffeeShotImage() { return QString(); }
 
-        inline QString antiBreakSprayName() { return QStringLiteral("防破防喷雾"); }
+        inline QString antiBreakSprayName() { return QStringLiteral("蜜桃四季春"); }
         inline QString antiBreakSprayDescription(int block)
         {
-            return QStringLiteral("获得 %1 点格挡。").arg(block);
+            return QStringLiteral("获得 %1 点抗压值").arg(block);
         }
         inline QString antiBreakSprayDescription()
         {
@@ -424,10 +424,10 @@ namespace GameText
         }
         inline QString antiBreakSprayImage() { return QString(); }
 
-        inline QString clinicSyrupName() { return QStringLiteral("校医院糖浆"); }
+        inline QString clinicSyrupName() { return QStringLiteral("可口可乐"); }
         inline QString clinicSyrupDescription(int heal)
         {
-            return QStringLiteral("回复 %1 点心情。").arg(heal);
+            return QStringLiteral("回复 %1 点心情").arg(heal);
         }
         inline QString clinicSyrupDescription()
         {
@@ -443,11 +443,11 @@ namespace GameText
         inline QString completeNodeButton() { return QStringLiteral("完成节点"); }
         inline QString backToMapButton() { return QStringLiteral("返回地图"); }
 
-        inline QString battleNodeName() { return QStringLiteral("战斗"); }
-        inline QString eventNodeName() { return QStringLiteral("事件"); }
-        inline QString shopNodeName() { return QStringLiteral("商店"); }
-        inline QString restNodeName() { return QStringLiteral("休息"); }
-        inline QString rewardNodeName() { return QStringLiteral("奖励"); }
+        inline QString battleNodeName() { return QStringLiteral("课程任务"); }
+        inline QString eventNodeName() { return QStringLiteral("神秘事件"); }
+        inline QString shopNodeName() { return QStringLiteral("物美超市"); }
+        inline QString restNodeName() { return QStringLiteral("宿舍"); }
+        inline QString rewardNodeName() { return QStringLiteral("顺手的事"); }
         inline QString bossNodeName() { return QStringLiteral("期末"); }
 
         inline QString completedNodeSuffix() { return QStringLiteral("已完成"); }
@@ -458,40 +458,40 @@ namespace GameText
 
     namespace ShopText
     {
-        inline QString pageTitle() { return QStringLiteral("校园商店"); }
-        inline QString leaveButton() { return QStringLiteral("离开商店"); }
-        inline QString coinsFormat() { return QStringLiteral("资源点：%1"); }
+        inline QString pageTitle() { return QStringLiteral("物美超市"); }
+        inline QString leaveButton() { return QStringLiteral("离开物美"); }
+        inline QString coinsFormat() { return QStringLiteral("余额：%1"); }
 
         inline QString intro(int discountPercent)
         {
-            return QStringLiteral("买一点能撑过下个 ddl 的东西。百讲折扣券会让商店价格降低 %1%。")
+            return QStringLiteral("来自物美的神秘小物品。物美会员卡会让商店价格降低 %1%\n 我没收他们广告费")
                 .arg(discountPercent);
         }
         inline QString intro() { return intro(GameBalance::Shop::discountPercent()); }
 
         inline QString relicSectionTitle() { return QStringLiteral("圣遗物"); }
         inline QString cardSectionTitle() { return QStringLiteral("卡牌"); }
-        inline QString potionSectionTitle() { return QStringLiteral("药水"); }
+        inline QString potionSectionTitle() { return QStringLiteral("饮料"); }
         inline QString serviceSectionTitle() { return QStringLiteral("服务"); }
 
         inline QString buyButtonFormat() { return QStringLiteral("购买 %1"); }
         inline QString boughtButton() { return QStringLiteral("已购买"); }
         inline QString buySuccessFormat() { return QStringLiteral("购买了：%1"); }
-        inline QString notEnoughCoinsFormat() { return QStringLiteral("资源点不足，买不起：%1"); }
+        inline QString notEnoughCoinsFormat() { return QStringLiteral("余额不足，买不起：%1"); }
 
-        inline QString noRelicText() { return QStringLiteral("暂时没有新的圣遗物。"); }
-        inline QString noPotionSlotText() { return QStringLiteral("药水栏已满。"); }
-        inline QString shopFinishedTip() { return QStringLiteral("离开后该商店节点完成。"); }
+        inline QString noRelicText() { return QStringLiteral("暂时没有新的圣遗物"); }
+        inline QString noPotionSlotText() { return QStringLiteral("饮料栏已满"); }
+        inline QString shopFinishedTip() { return QStringLiteral("离开后该商店节点完成"); }
 
         inline QString cardRemovalName() { return QStringLiteral("移除一张卡牌"); }
-        inline QString cardRemovalDescription() { return QStringLiteral("从当前牌组中永久删除一张卡牌。"); }
+        inline QString cardRemovalDescription() { return QStringLiteral("从当前牌组中永久删除一张卡牌"); }
         inline QString cardRemovalDialogTitle() { return QStringLiteral("选择要移除的卡牌"); }
-        inline QString cardRemovalSuccess() { return QStringLiteral("卡牌已移除。"); }
+        inline QString cardRemovalSuccess() { return QStringLiteral("卡牌已移除"); }
         inline QString cardRemovalNotEnoughCoins()
         {
-            return QStringLiteral("资源点不足，无法移除卡牌。");
+            return QStringLiteral("余额不足，无法删牌");
         }
-        inline QString emptyDeckText() { return QStringLiteral("当前没有可移除的卡牌。"); }
+        inline QString emptyDeckText() { return QStringLiteral("当前没有可移除的卡牌"); }
     }
 
     namespace RewardText
@@ -499,23 +499,23 @@ namespace GameText
         inline QString pageTitle() { return QStringLiteral("战斗奖励"); }
         inline QString skipButton() { return QStringLiteral("跳过奖励"); }
         inline QString takeCardButton() { return QStringLiteral("加入牌组"); }
-        inline QString finishTip() { return QStringLiteral("奖励结算完成。"); }
+        inline QString finishTip() { return QStringLiteral("奖励结算完成"); }
 
         inline QString rewardWithPotion(int coins, const QString &potionName)
         {
-            return QStringLiteral("获得 %1 资源点，并得到一瓶%2。选择一张卡加入牌组。")
+            return QStringLiteral("获得 %1 Money，并得到一瓶%2。选择一张卡加入牌组")
                 .arg(coins)
                 .arg(potionName);
         }
         inline QString rewardWithPotion()
         {
-            return QStringLiteral("获得 %1 资源点，并得到一瓶咖啡因冲剂。选择一张卡加入牌组。")
+            return QStringLiteral("获得 %1 Money，并得到一瓶抹茶拿铁。选择一张卡加入牌组")
                 .arg(GameBalance::Rewards::rewardScreenCoins());
         }
 
         inline QString rewardPotionFull(int coins)
         {
-            return QStringLiteral("获得 %1 资源点。药水栏已满，无法获得新的药水。选择一张卡加入牌组。")
+            return QStringLiteral("获得 %1 Money。饮料栏已满，无法获得新的饮料。选择一张卡加入牌组")
                 .arg(coins);
         }
         inline QString rewardPotionFull()

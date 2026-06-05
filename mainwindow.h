@@ -13,6 +13,8 @@ class RewardWidget;
 class ShopWidget;
 class QStackedWidget;
 class QWidget;
+struct RandomEventChoice;
+struct RandomEventData;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -33,8 +35,10 @@ private:
     QWidget *createMapPage();
     QWidget *createBattlePage(bool bossBattle = false, bool fromMap = false);
     QWidget *createEventPreviewPage(bool fromMap = false);
+    QWidget *createEventPreviewPage(const RandomEventData &eventData, bool fromMap = false);
     QWidget *createShopPage(bool fromMap = false);
     QWidget *createRewardPage(bool fromMap = false);
+    QWidget *createEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false);
     QWidget *createMapNodePlaceholderPage(const QString &title, const QString &body);
     QWidget *createDebugPlaceholderPage(const QString &title, const QString &body);
     void startNewRunFromMenu();
@@ -42,7 +46,9 @@ private:
     void showBattlePage();
     void showBossBattlePage();
     void showEventPreviewPage();
+    void showEventPreviewPage(const RandomEventData &eventData);
     void showRewardPage(bool fromMap = false);
+    void showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false);
     void showDebugPlaceholderPage(const QString &title, const QString &body);
     void openMapNode(MapNodeType nodeType);
     void finishMapNode(bool completed);

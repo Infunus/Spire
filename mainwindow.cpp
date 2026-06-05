@@ -344,6 +344,13 @@ QWidget *MainWindow::createMapPage()
     rootLayout->addWidget(m_mapWidget, 1);
 
     connect(newRunButton, &QPushButton::clicked, this, [this]() {
+        if (m_battlePage) {
+            m_pages->removeWidget(m_battlePage);
+            m_battlePage->deleteLater();
+            m_battlePage = nullptr;
+            m_battleWidget = nullptr;
+        }
+        m_activeMapNodeType = MapNodeType::None;
         GameState::instance().resetForNewRun();
         if (m_mapWidget) {
             m_mapWidget->resetMap();
@@ -421,7 +428,7 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
         if (fromMap) {
-            finishMapNode(false);
+            showMapPage(false);
         } else {
             m_pages->setCurrentIndex(0);
         }
@@ -475,12 +482,22 @@ QWidget *MainWindow::createEventPreviewPage(bool fromMap)
 
     m_eventWidget = new EventWidget(page);
     m_eventWidget->setBackgroundImage(assetPath(GameText::Assets::eventBackground()));
+    m_eventWidget->setShowCompletionRewards(fromMap);
 
     m_eventWidget->setEvent(EventLibrary::randomEvent());
 
     m_eventWidget->setChoiceHandler([this, fromMap](int choiceIndex, const RandomEventChoice &choice) {
         Q_UNUSED(choiceIndex);
         // 事件内容本身请优先写在 core/EventLibrary.h。
+        if (EventLibrary::choiceHasCardReward(choice)) {
+            if (fromMap) {
+                EventLibrary::applyChoiceEffect(choice, false);
+                GameState::instance().recordEventFinished();
+            }
+            showEventCardRewardPage(choice, fromMap);
+            return;
+        }
+
         if (fromMap) {
             EventLibrary::applyChoiceEffect(choice);
             GameState::instance().recordEventFinished();
@@ -639,6 +656,81 @@ QWidget *MainWindow::createRewardPage(bool fromMap)
     return page;
 }
 
+QWidget *MainWindow::createEventCardRewardPage(const RandomEventChoice &choice, bool fromMap)
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("RewardPage");
+    page->setStyleSheet(
+        "#RewardPage { background: #10131d; }"
+        "QFrame#TopBar {"
+        "  background: #1b1f2b;"
+        "  border-bottom: 1px solid rgba(185, 215, 255, 100);"
+        "}"
+        "QPushButton#MenuButton {"
+        "  background: rgba(255, 226, 168, 35);"
+        "  border: 1px solid rgba(255, 226, 168, 120);"
+        "  border-radius: 6px;"
+        "  color: #f7ead0;"
+        "  font-size: 15px;"
+        "  font-weight: 700;"
+        "  padding: 8px 14px;"
+        "}"
+        "QPushButton#MenuButton:hover { background: rgba(255, 226, 168, 70); }");
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    QFrame *topBar = new QFrame(page);
+    topBar->setObjectName("TopBar");
+    topBar->setFixedHeight(50);
+
+    QHBoxLayout *topLayout = new QHBoxLayout(topBar);
+    topLayout->setContentsMargins(18, 6, 18, 6);
+
+    QLabel *titleLabel = new QLabel(QStringLiteral("卡牌奖励"), topBar);
+    titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
+
+    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+                                                       : GameText::Menu::backToMenuButton(), topBar);
+    menuButton->setObjectName("MenuButton");
+    menuButton->setCursor(Qt::PointingHandCursor);
+
+    topLayout->addWidget(titleLabel);
+    topLayout->addStretch();
+    topLayout->addWidget(menuButton);
+
+    m_rewardWidget = new RewardWidget(page);
+    m_rewardWidget->setFinishHandler([this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(true);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    QString rewardMessage = EventLibrary::effectSummaryLine(choice);
+    if (rewardMessage.isEmpty()) {
+        rewardMessage = QStringLiteral("事件影响：选择一张卡牌加入牌组。");
+    } else {
+        rewardMessage += QStringLiteral("\n请选择一张卡牌加入牌组。");
+    }
+    m_rewardWidget->openEventCardReward(EventLibrary::cardRewardTargetId(choice), rewardMessage);
+
+    rootLayout->addWidget(topBar);
+    rootLayout->addWidget(m_rewardWidget, 1);
+
+    connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(true);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    return page;
+}
+
 QWidget *MainWindow::createMapNodePlaceholderPage(const QString &title, const QString &body)
 {
     QWidget *page = createDebugPlaceholderPage(title, body);
@@ -757,6 +849,13 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
 
 void MainWindow::startNewRunFromMenu()
 {
+    if (m_battlePage) {
+        m_pages->removeWidget(m_battlePage);
+        m_battlePage->deleteLater();
+        m_battlePage = nullptr;
+        m_battleWidget = nullptr;
+    }
+    m_activeMapNodeType = MapNodeType::None;
     GameState::instance().resetForNewRun();
     showMapPage(true);
 }
@@ -829,6 +928,20 @@ void MainWindow::showRewardPage(bool fromMap)
     m_pages->setCurrentWidget(m_rewardPage);
 }
 
+void MainWindow::showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap)
+{
+    if (m_rewardPage) {
+        m_pages->removeWidget(m_rewardPage);
+        m_rewardPage->deleteLater();
+        m_rewardPage = nullptr;
+        m_rewardWidget = nullptr;
+    }
+
+    m_rewardPage = createEventCardRewardPage(choice, fromMap);
+    m_pages->addWidget(m_rewardPage);
+    m_pages->setCurrentWidget(m_rewardPage);
+}
+
 void MainWindow::showDebugPlaceholderPage(const QString &title, const QString &body)
 {
     if (m_debugPage) {
@@ -844,10 +957,19 @@ void MainWindow::showDebugPlaceholderPage(const QString &title, const QString &b
 
 void MainWindow::openMapNode(MapNodeType nodeType)
 {
+    const bool resumeExistingBattle =
+        m_battlePage
+        && (nodeType == MapNodeType::Battle || nodeType == MapNodeType::Boss)
+        && m_activeMapNodeType == nodeType;
+
     m_activeMapNodeType = nodeType;
     GameState::instance().setCurrentNode(nodeType);
 
     if (nodeType == MapNodeType::Battle || nodeType == MapNodeType::Boss) {
+        if (resumeExistingBattle) {
+            m_pages->setCurrentWidget(m_battlePage);
+            return;
+        }
         if (m_battlePage) {
             m_pages->removeWidget(m_battlePage);
             m_battlePage->deleteLater();
@@ -909,6 +1031,13 @@ void MainWindow::openMapNode(MapNodeType nodeType)
 
 void MainWindow::finishMapNode(bool completed)
 {
+    if (m_battlePage && (m_activeMapNodeType == MapNodeType::Battle || m_activeMapNodeType == MapNodeType::Boss)) {
+        m_pages->removeWidget(m_battlePage);
+        m_battlePage->deleteLater();
+        m_battlePage = nullptr;
+        m_battleWidget = nullptr;
+    }
+
     if (completed && m_mapWidget) {
         GameState::instance().advanceFloor(m_activeMapNodeType);
         m_mapWidget->completeCurrentNode();

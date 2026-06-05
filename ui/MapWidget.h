@@ -401,6 +401,13 @@ private:
 
     void activateRoom(MapRoomData *room)
     {
+        if (room && room->pending && m_pendingRoom == room) {
+            if (m_nodeHandler) {
+                m_nodeHandler(room->type);
+            }
+            return;
+        }
+
         if (!room || !room->available || room->completed || m_pendingRoom) {
             return;
         }
@@ -427,7 +434,8 @@ private:
                 text += QStringLiteral("\n") + GameText::MapText::completedNodeSuffix();
             }
             room->button->setText(text);
-            room->button->setEnabled(room->available && !room->completed && !room->pending);
+            room->button->setEnabled((room->available && !room->completed && !room->pending)
+                                     || room->pending);
 
             QString style;
             if (room->completed) {
