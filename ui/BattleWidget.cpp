@@ -643,6 +643,7 @@ BattleWidget::BattleWidget(QWidget *parent)
       m_playerMaxHp(GameBalance::Player::startMaxHp()),
       m_playerBlock(0),
       m_playerStrength(0),
+      m_turnStartBlockBonus(0),
       m_energy(GameBalance::Battle::energyPerTurn()),
       m_maxEnergy(GameBalance::Battle::energyPerTurn()),
       m_turnNumber(1),
@@ -956,6 +957,7 @@ void BattleWidget::startBattle()
     rebuildEnemyWidgets();
     m_playerBlock = 0;
     m_playerStrength = 0;
+    m_turnStartBlockBonus = GameState::instance().consumeNextBattleTurnBlock();
     m_energy = m_maxEnergy;
     m_turnNumber = 0;
     m_hoveredCardIndex = -1;
@@ -971,6 +973,7 @@ void BattleWidget::startBattle()
     m_titleLabel->setText(GameText::Battle::battleTitleFormat().arg(m_battleNumber));
     beginPlayerTurn();
     applyRelicsAtBattleStart();
+    m_playerStrength += GameState::instance().consumeNextBattleStartStrength();
     refreshUi();
 }
 
@@ -978,6 +981,10 @@ void BattleWidget::beginPlayerTurn()
 {
     ++m_turnNumber;
     m_playerBlock = 0;
+    if (m_turnStartBlockBonus > 0) {
+        m_playerBlock += m_turnStartBlockBonus;
+    }
+    applyRelicsAtTurnStart();
     m_energy = m_maxEnergy;
     m_playerTurn = true;
     drawCards(GameBalance::Battle::cardsDrawnEachTurn());
@@ -1575,6 +1582,16 @@ void BattleWidget::applyRelicsAtBattleStart()
             m_playerStrength += relic.amount;
         } else if (relic.effectType == RelicEffectType::StartCombatDraw) {
             drawCards(relic.amount);
+        }
+    }
+}
+
+void BattleWidget::applyRelicsAtTurnStart()
+{
+    const QList<RelicData> relics = GameState::instance().relics();
+    for (const RelicData &relic : relics) {
+        if (relic.effectType == RelicEffectType::TurnStartBlock) {
+            m_playerBlock += relic.amount;
         }
     }
 }

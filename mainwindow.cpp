@@ -101,10 +101,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_pages->addWidget(createMenuPage());
     setCentralWidget(m_pages);
+    playWorldMusic();
 }
 
 MainWindow::~MainWindow()
 {
+    stopAllMusic();
     delete ui;
 }
 
@@ -376,6 +378,7 @@ QWidget *MainWindow::createMapPage()
     rootLayout->addWidget(m_mapWidget, 1);
 
     connect(newRunButton, &QPushButton::clicked, this, [this]() {
+        stopMusic();
         if (m_battlePage) {
             m_pages->removeWidget(m_battlePage);
             m_battlePage->deleteLater();
@@ -389,6 +392,7 @@ QWidget *MainWindow::createMapPage()
         }
     });
     connect(menuButton, &QPushButton::clicked, this, [this]() {
+        stopMusic();
         if (m_mapWidget) {
             m_mapWidget->cancelPendingNode();
         }
@@ -445,6 +449,7 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
     m_battleWidget = new BattleWidget(page);
     if (fromMap) {
         m_battleWidget->startMapBattle(bossBattle, [this](bool victory) {
+            stopMusic();
             if (victory && m_activeMapNodeType == MapNodeType::Battle) {
                 showRewardPage(true);
             } else {
@@ -459,12 +464,15 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
     rootLayout->addWidget(m_battleWidget, 1);
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        pauseMusic();
         if (fromMap) {
             showMapPage(false);
         } else {
             m_pages->setCurrentIndex(0);
         }
     });
+
+    playBattleMusic();
 
     return page;
 }
@@ -693,7 +701,10 @@ QWidget *MainWindow::createRewardPage(bool fromMap)
     return page;
 }
 
-QWidget *MainWindow::createEventCardRewardPage(const RandomEventChoice &choice, bool fromMap)
+QWidget *MainWindow::createEventCardRewardPage(const RandomEventChoice &choice,
+                                               bool fromMap,
+                                               int rewardIndex,
+                                               int rewardCount)
 {
     QWidget *page = new QWidget(this);
     page->setObjectName("RewardPage");
@@ -737,20 +748,26 @@ QWidget *MainWindow::createEventCardRewardPage(const RandomEventChoice &choice, 
     topLayout->addStretch();
     topLayout->addWidget(menuButton);
 
+    const int totalRewards = qMax(1, rewardCount);
+    const int currentRewardIndex = qBound(0, rewardIndex, totalRewards - 1);
+
     m_rewardWidget = new RewardWidget(page);
-    m_rewardWidget->setFinishHandler([this, fromMap]() {
-        if (fromMap) {
+    m_rewardWidget->setFinishHandler([this, choice, fromMap, currentRewardIndex, totalRewards]() {
+        if (currentRewardIndex + 1 < totalRewards) {
+            showEventCardRewardPage(choice, fromMap, currentRewardIndex + 1);
+        } else if (fromMap) {
             finishMapNode(true);
         } else {
             m_pages->setCurrentIndex(0);
         }
     });
 
-    QString rewardMessage = EventLibrary::effectSummaryLine(choice);
+    QString rewardMessage;
+    if (currentRewardIndex == 0) {
+        rewardMessage = EventLibrary::effectSummaryLine(choice);
+    }
     if (rewardMessage.isEmpty()) {
-        rewardMessage = QStringLiteral("事件影响：选择一张卡牌加入牌组。");
-    } else {
-        rewardMessage += QStringLiteral("\n请选择一张卡牌加入牌组。");
+        rewardMessage = QStringLiteral("获得一张卡牌。");
     }
     m_rewardWidget->openEventCardReward(EventLibrary::cardRewardTargetId(choice), rewardMessage);
 
@@ -886,6 +903,7 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
 
 void MainWindow::startNewRunFromMenu()
 {
+    stopMusic();
     if (m_battlePage) {
         m_pages->removeWidget(m_battlePage);
         m_battlePage->deleteLater();
@@ -911,6 +929,7 @@ void MainWindow::showMapPage(bool resetMap)
 
 void MainWindow::showBattlePage()
 {
+    stopMusic();
     if (m_battlePage) {
         m_pages->removeWidget(m_battlePage);
         m_battlePage->deleteLater();
@@ -925,6 +944,7 @@ void MainWindow::showBattlePage()
 
 void MainWindow::showBossBattlePage()
 {
+    stopMusic();
     if (m_battlePage) {
         m_pages->removeWidget(m_battlePage);
         m_battlePage->deleteLater();
@@ -970,7 +990,7 @@ void MainWindow::showRewardPage(bool fromMap)
     m_pages->setCurrentWidget(m_rewardPage);
 }
 
-void MainWindow::showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap)
+void MainWindow::showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap, int rewardIndex)
 {
     if (m_rewardPage) {
         m_pages->removeWidget(m_rewardPage);
@@ -979,7 +999,7 @@ void MainWindow::showEventCardRewardPage(const RandomEventChoice &choice, bool f
         m_rewardWidget = nullptr;
     }
 
-    m_rewardPage = createEventCardRewardPage(choice, fromMap);
+    m_rewardPage = createEventCardRewardPage(choice, fromMap, rewardIndex, EventLibrary::cardRewardCount(choice));
     m_pages->addWidget(m_rewardPage);
     m_pages->setCurrentWidget(m_rewardPage);
 }
@@ -1010,9 +1030,11 @@ void MainWindow::openMapNode(MapNodeType nodeType)
     if (nodeType == MapNodeType::Battle || nodeType == MapNodeType::Boss) {
         if (resumeExistingBattle) {
             m_pages->setCurrentWidget(m_battlePage);
+            playBattleMusic();
             return;
         }
         if (m_battlePage) {
+            stopMusic();
             m_pages->removeWidget(m_battlePage);
             m_battlePage->deleteLater();
             m_battlePage = nullptr;
@@ -1074,6 +1096,7 @@ void MainWindow::openMapNode(MapNodeType nodeType)
 void MainWindow::finishMapNode(bool completed)
 {
     if (m_battlePage && (m_activeMapNodeType == MapNodeType::Battle || m_activeMapNodeType == MapNodeType::Boss)) {
+        stopMusic();
         m_pages->removeWidget(m_battlePage);
         m_battlePage->deleteLater();
         m_battlePage = nullptr;
@@ -1089,6 +1112,44 @@ void MainWindow::finishMapNode(bool completed)
 
     m_activeMapNodeType = MapNodeType::None;
     showMapPage(false);
+}
+
+void MainWindow::playBattleMusic()
+{
+    m_worldAudioManager.pause();
+    m_battleAudioManager.playLoop(assetPath(GameText::Assets::battleMusic()));
+}
+
+void MainWindow::playWorldMusic()
+{
+    m_worldAudioManager.playPlaylistLoop(worldMusicFiles());
+}
+
+void MainWindow::pauseMusic()
+{
+    m_battleAudioManager.pause();
+    playWorldMusic();
+}
+
+void MainWindow::stopMusic()
+{
+    m_battleAudioManager.stop();
+    playWorldMusic();
+}
+
+void MainWindow::stopAllMusic()
+{
+    m_battleAudioManager.stop();
+    m_worldAudioManager.stop();
+}
+
+QStringList MainWindow::worldMusicFiles() const
+{
+    return QStringList()
+        << assetPath(GameText::Assets::worldMusicBoyaTodo())
+        << assetPath(GameText::Assets::worldMusicYanyuanDay())
+        << assetPath(GameText::Assets::worldMusicPkuGrinder())
+        << assetPath(GameText::Assets::worldMusicLakeWind());
 }
 
 QString MainWindow::assetPath(const QString &relativePath) const

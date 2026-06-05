@@ -69,6 +69,7 @@ private:
     void refreshPileButtons();
     void rebuildStatusIcons(QHBoxLayout *layout, const QList<QPair<QString, int>> &statuses);
     void applyRelicsAtBattleStart();
+    void applyRelicsAtTurnStart();
     void applyRelicsAfterBattleWin();
     void usePotionAt(int potionIndex, int targetEnemyIndex = -1);
     void playCard(int handIndex, int targetEnemyIndex = -1);
@@ -130,6 +131,7 @@ private:
     int m_playerMaxHp;
     int m_playerBlock;
     int m_playerStrength;
+    int m_turnStartBlockBonus;
     int m_energy;
     int m_maxEnergy;
     int m_turnNumber;

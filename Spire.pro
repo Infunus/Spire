@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -14,6 +14,7 @@ SOURCES += \
     ui/BattleWidget.cpp
 
 HEADERS += \
+    core/AudioManager.h \
     mainwindow.h \
     ui/BattleWidget.h
 

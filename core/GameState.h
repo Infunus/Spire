@@ -44,6 +44,8 @@ public:
         GameRandom::instance().setSeed(m_runSeed);
         m_gradeScore = 0;
         m_finalExamScore = 0;
+        m_nextBattleStartStrength = 0;
+        m_nextBattleTurnBlock = 0;
         m_credits = 0;
         m_coins = GameBalance::Player::startCoins();
         m_currentFloor = 0;
@@ -64,6 +66,8 @@ public:
     int gradeScore() const { return m_gradeScore; }
     int usualScore() const { return m_gradeScore; }
     int finalExamScore() const { return m_finalExamScore; }
+    int nextBattleStartStrength() const { return m_nextBattleStartStrength; }
+    int nextBattleTurnBlock() const { return m_nextBattleTurnBlock; }
     int totalScore() const
     {
         return qBound(0,
@@ -131,6 +135,34 @@ public:
         m_finalExamScore = qBound(0,
                                   score,
                                   GameBalance::CourseGrade::finalExamScoreMax());
+    }
+
+    void addNextBattleStartStrength(int amount)
+    {
+        if (amount > 0) {
+            m_nextBattleStartStrength += amount;
+        }
+    }
+
+    int consumeNextBattleStartStrength()
+    {
+        const int amount = m_nextBattleStartStrength;
+        m_nextBattleStartStrength = 0;
+        return amount;
+    }
+
+    void addNextBattleTurnBlock(int amount)
+    {
+        if (amount > 0) {
+            m_nextBattleTurnBlock += amount;
+        }
+    }
+
+    int consumeNextBattleTurnBlock()
+    {
+        const int amount = m_nextBattleTurnBlock;
+        m_nextBattleTurnBlock = 0;
+        return amount;
     }
 
     void addCredits(int amount)
@@ -289,11 +321,9 @@ public:
         addCoins(GameBalance::Rewards::battleCoins());
     }
 
-    void recordEventFinished(int usualScoreReward = GameBalance::Rewards::eventGradeScore())
+    void recordEventFinished()
     {
         ++m_eventsFinished;
-        addUsualScore(usualScoreReward);
-        addCoins(GameBalance::Rewards::eventCoins());
     }
 
     void recordBossDefeated(int finalExamScore = GameBalance::CourseGrade::finalExamStartScore(),
@@ -334,6 +364,8 @@ private:
           m_maxHp(GameBalance::Player::startMaxHp()),
           m_gradeScore(0),
           m_finalExamScore(0),
+          m_nextBattleStartStrength(0),
+          m_nextBattleTurnBlock(0),
           m_credits(0),
           m_coins(GameBalance::Player::startCoins()),
           m_runSeed(1),
@@ -352,6 +384,8 @@ private:
     int m_maxHp;
     int m_gradeScore;
     int m_finalExamScore;
+    int m_nextBattleStartStrength;
+    int m_nextBattleTurnBlock;
     int m_credits;
     int m_coins;
     quint32 m_runSeed;

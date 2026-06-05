@@ -1,10 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "core/AudioManager.h"
 #include "core/GameState.h"
 
 #include <QMainWindow>
 #include <QString>
+#include <QStringList>
 
 class BattleWidget;
 class EventWidget;
@@ -38,7 +40,10 @@ private:
     QWidget *createEventPreviewPage(const RandomEventData &eventData, bool fromMap = false);
     QWidget *createShopPage(bool fromMap = false);
     QWidget *createRewardPage(bool fromMap = false);
-    QWidget *createEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false);
+    QWidget *createEventCardRewardPage(const RandomEventChoice &choice,
+                                       bool fromMap = false,
+                                       int rewardIndex = 0,
+                                       int rewardCount = 1);
     QWidget *createMapNodePlaceholderPage(const QString &title, const QString &body);
     QWidget *createDebugPlaceholderPage(const QString &title, const QString &body);
     void startNewRunFromMenu();
@@ -48,10 +53,16 @@ private:
     void showEventPreviewPage();
     void showEventPreviewPage(const RandomEventData &eventData);
     void showRewardPage(bool fromMap = false);
-    void showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false);
+    void showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false, int rewardIndex = 0);
     void showDebugPlaceholderPage(const QString &title, const QString &body);
     void openMapNode(MapNodeType nodeType);
     void finishMapNode(bool completed);
+    void playBattleMusic();
+    void playWorldMusic();
+    void pauseMusic();
+    void stopMusic();
+    void stopAllMusic();
+    QStringList worldMusicFiles() const;
     QString assetPath(const QString &relativePath) const;
 
     Ui::MainWindow *ui;
@@ -69,5 +80,7 @@ private:
     ShopWidget *m_shopWidget;
     RewardWidget *m_rewardWidget;
     MapNodeType m_activeMapNodeType;
+    AudioManager m_battleAudioManager;
+    AudioManager m_worldAudioManager;
 };
 #endif // MAINWINDOW_H

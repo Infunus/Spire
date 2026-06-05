@@ -35,6 +35,8 @@
 | `resources/events/student_affairs_new_task.png` | 事件：学工群新锅 |
 | `resources/events/open_day.png` | 事件：开放日 |
 | `resources/events/ideology_pre.png` | 事件：思政课 Pre |
+| `resources/events/gaokao_blessing_video.png` | 事件：高考祝福视频 |
+| `resources/events/wusi_night_run.png` | 事件：五四夜奔 |
 
 ## 事件图约定
 

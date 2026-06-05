@@ -28,6 +28,11 @@ namespace GameText
         inline QString eventBackground() { return QStringLiteral("resources/event_bg.png"); }
         inline QString mapBackground() { return QStringLiteral("resources/map_bg.png"); }
         inline QString battleBackground() { return QStringLiteral("resources/battle_bg.png"); }
+        inline QString battleMusic() { return QStringLiteral("resources/audio/battle_ddl.mp3"); }
+        inline QString worldMusicBoyaTodo() { return QStringLiteral("resources/audio/world_boya_todo.mp3"); }
+        inline QString worldMusicYanyuanDay() { return QStringLiteral("resources/audio/world_yanyuan_day.mp3"); }
+        inline QString worldMusicPkuGrinder() { return QStringLiteral("resources/audio/world_pku_grinder.mp3"); }
+        inline QString worldMusicLakeWind() { return QStringLiteral("resources/audio/world_lake_wind.mp3"); }
     }
 
     namespace App
@@ -412,6 +417,28 @@ namespace GameText
             return luckyCouponDescription(GameBalance::Relics::luckyCouponDiscount());
         }
         inline QString luckyCouponImage() { return QString(); }
+
+        inline QString qingtianObservationGuideName() { return QStringLiteral("青天观测指南"); }
+        inline QString qingtianObservationGuideDescription(int strength)
+        {
+            return QStringLiteral("每场战斗开始时，效率值 +%1").arg(strength);
+        }
+        inline QString qingtianObservationGuideDescription()
+        {
+            return qingtianObservationGuideDescription(GameBalance::Relics::qingtianObservationGuideStrength());
+        }
+        inline QString qingtianObservationGuideImage() { return QString(); }
+
+        inline QString pkuWatermelonName() { return QStringLiteral("北大的瓜"); }
+        inline QString pkuWatermelonDescription(int block)
+        {
+            return QStringLiteral("战斗中每回合开始时，获得 %1 点抗压值").arg(block);
+        }
+        inline QString pkuWatermelonDescription()
+        {
+            return pkuWatermelonDescription(GameBalance::Relics::pkuWatermelonTurnBlock());
+        }
+        inline QString pkuWatermelonImage() { return QString(); }
     }
 
     // 药水文本。数值来自 GameBalance::Potions。
