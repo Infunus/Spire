@@ -9,6 +9,7 @@
 #include "ui/ShopWidget.h"
 #include "ui_mainwindow.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDir>
@@ -18,6 +19,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLinearGradient>
+#include <QMenu>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPixmap>
@@ -180,6 +182,35 @@ QWidget *MainWindow::createMenuPage()
     eventButton->setStyleSheet(buttonStyle);
     quitButton->setStyleSheet(buttonStyle);
 
+    QMenu *eventMenu = new QMenu(eventButton);
+    eventMenu->setStyleSheet(
+        "QMenu {"
+        "  background: rgba(13, 18, 28, 245);"
+        "  border: 1px solid rgba(185, 215, 255, 150);"
+        "  color: #eaf2ff;"
+        "  font-size: 14px;"
+        "  font-weight: 800;"
+        "  padding: 6px;"
+        "}"
+        "QMenu::item { padding: 8px 18px 8px 14px; border-radius: 5px; }"
+        "QMenu::item:selected { background: rgba(67, 86, 123, 220); }"
+        "QMenu::separator { height: 1px; background: rgba(185, 215, 255, 80); margin: 6px 4px; }");
+
+    QAction *randomEventAction = eventMenu->addAction(QStringLiteral("随机事件"));
+    connect(randomEventAction, &QAction::triggered, this, [this]() {
+        showEventPreviewPage();
+    });
+    eventMenu->addSeparator();
+
+    const QList<RandomEventData> previewEvents = EventLibrary::allEvents();
+    for (const RandomEventData &eventData : previewEvents) {
+        QAction *eventAction = eventMenu->addAction(eventData.title);
+        connect(eventAction, &QAction::triggered, this, [this, eventData]() {
+            showEventPreviewPage(eventData);
+        });
+    }
+    eventButton->setMenu(eventMenu);
+
     QVBoxLayout *buttonLayout = new QVBoxLayout;
     buttonLayout->setSpacing(14);
     buttonLayout->addWidget(startButton);
@@ -257,11 +288,12 @@ QWidget *MainWindow::createMenuPage()
     rootLayout->addWidget(debugPanel, 0, Qt::AlignLeft);
 
     connect(startButton, &QPushButton::clicked, this, &MainWindow::startNewRunFromMenu);
-    connect(eventButton, &QPushButton::clicked, this, &MainWindow::showEventPreviewPage);
     connect(quitButton, &QPushButton::clicked, qApp, &QApplication::quit);
     connect(debugBattleButton, &QPushButton::clicked, this, &MainWindow::showBattlePage);
     connect(debugBossButton, &QPushButton::clicked, this, &MainWindow::showBossBattlePage);
-    connect(debugEventButton, &QPushButton::clicked, this, &MainWindow::showEventPreviewPage);
+    connect(debugEventButton, &QPushButton::clicked, this, [this]() {
+        showEventPreviewPage();
+    });
     connect(debugMapButton, &QPushButton::clicked, this, [this]() {
         showMapPage(false);
     });
@@ -439,6 +471,11 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
 
 QWidget *MainWindow::createEventPreviewPage(bool fromMap)
 {
+    return createEventPreviewPage(EventLibrary::randomEvent(), fromMap);
+}
+
+QWidget *MainWindow::createEventPreviewPage(const RandomEventData &eventData, bool fromMap)
+{
     QWidget *page = new QWidget(this);
     page->setObjectName("EventPreviewPage");
     page->setStyleSheet(
@@ -484,7 +521,7 @@ QWidget *MainWindow::createEventPreviewPage(bool fromMap)
     m_eventWidget->setBackgroundImage(assetPath(GameText::Assets::eventBackground()));
     m_eventWidget->setShowCompletionRewards(fromMap);
 
-    m_eventWidget->setEvent(EventLibrary::randomEvent());
+    m_eventWidget->setEvent(eventData);
 
     m_eventWidget->setChoiceHandler([this, fromMap](int choiceIndex, const RandomEventChoice &choice) {
         Q_UNUSED(choiceIndex);
@@ -902,6 +939,11 @@ void MainWindow::showBossBattlePage()
 
 void MainWindow::showEventPreviewPage()
 {
+    showEventPreviewPage(EventLibrary::randomEvent());
+}
+
+void MainWindow::showEventPreviewPage(const RandomEventData &eventData)
+{
     if (m_eventPage) {
         m_pages->removeWidget(m_eventPage);
         m_eventPage->deleteLater();
@@ -909,7 +951,7 @@ void MainWindow::showEventPreviewPage()
         m_eventWidget = nullptr;
     }
 
-    m_eventPage = createEventPreviewPage(false);
+    m_eventPage = createEventPreviewPage(eventData, false);
     m_pages->addWidget(m_eventPage);
     m_pages->setCurrentWidget(m_eventPage);
 }

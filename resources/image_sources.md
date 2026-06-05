@@ -28,3 +28,14 @@
 | `resources/enemies/enemy_group_presentation.png` | 小组汇报 |
 | `resources/enemies/enemy_final_exam.png` | 期末考试 |
 | `resources/cards/genshin_impact_wordmark.png` | 原神卡牌备用 logo 资源 |
+| `resources/events/library_night.png` | 事件：图书馆深夜 |
+| `resources/events/dorm_power_outage.png` | 事件：宿舍停电 |
+| `resources/events/science_building_elevator.png` | 事件：理科楼电梯 |
+| `resources/events/weiming_lake_walk.png` | 事件：未名湖夜行 |
+| `resources/events/student_affairs_new_task.png` | 事件：学工群新锅 |
+| `resources/events/open_day.png` | 事件：开放日 |
+| `resources/events/ideology_pre.png` | 事件：思政课 Pre |
+
+## 事件图约定
+
+新增事件时，事件 id 使用 `snake_case`，事件图保存为 `resources/events/<event_id>.png`。`EventLibrary::makeEvent()` 会在未手动填写 `imagePath` 时自动使用这个路径。后续新增事件时同步用 image2 生成对应事件图，质量优先，可以按事件气质自由选择写实、玄幻或喜剧化风格。

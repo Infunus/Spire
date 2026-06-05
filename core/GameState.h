@@ -43,6 +43,7 @@ public:
         m_runSeed = seed == 0 ? 1 : seed;
         GameRandom::instance().setSeed(m_runSeed);
         m_gradeScore = 0;
+        m_finalExamScore = 0;
         m_credits = 0;
         m_coins = GameBalance::Player::startCoins();
         m_currentFloor = 0;
@@ -61,6 +62,14 @@ public:
     int hp() const { return m_hp; }
     int maxHp() const { return m_maxHp; }
     int gradeScore() const { return m_gradeScore; }
+    int usualScore() const { return m_gradeScore; }
+    int finalExamScore() const { return m_finalExamScore; }
+    int totalScore() const
+    {
+        return qBound(0,
+                      (m_gradeScore + m_finalExamScore) / 2,
+                      GameBalance::CourseGrade::finalTotalScoreMax());
+    }
     int credits() const { return m_credits; }
     int coins() const { return m_coins; }
     quint32 runSeed() const { return m_runSeed; }
@@ -107,7 +116,21 @@ public:
 
     void addGradeScore(int amount)
     {
-        m_gradeScore = qMax(0, m_gradeScore + amount);
+        m_gradeScore = qBound(0,
+                              m_gradeScore + amount,
+                              GameBalance::CourseGrade::usualScoreMax());
+    }
+
+    void addUsualScore(int amount)
+    {
+        addGradeScore(amount);
+    }
+
+    void setFinalExamScore(int score)
+    {
+        m_finalExamScore = qBound(0,
+                                  score,
+                                  GameBalance::CourseGrade::finalExamScoreMax());
     }
 
     void addCredits(int amount)
@@ -256,27 +279,28 @@ public:
         return true;
     }
 
-    void recordEnemyDefeated(int gradeScoreReward = GameBalance::Rewards::battleGradeScore(),
-                             int creditReward = GameBalance::Rewards::battleCredits())
+    void recordEnemyDefeated(int usualScoreReward = GameBalance::Rewards::battleGradeScore(),
+                             int creditReward = GameBalance::Rewards::battleCredits(),
+                             int defeatedEnemyCount = 1)
     {
-        ++m_defeatedEnemies;
-        addGradeScore(gradeScoreReward);
+        m_defeatedEnemies += qMax(1, defeatedEnemyCount);
+        addUsualScore(usualScoreReward);
         addCredits(creditReward);
         addCoins(GameBalance::Rewards::battleCoins());
     }
 
-    void recordEventFinished(int gradeScoreReward = GameBalance::Rewards::eventGradeScore())
+    void recordEventFinished(int usualScoreReward = GameBalance::Rewards::eventGradeScore())
     {
         ++m_eventsFinished;
-        addGradeScore(gradeScoreReward);
+        addUsualScore(usualScoreReward);
         addCoins(GameBalance::Rewards::eventCoins());
     }
 
-    void recordBossDefeated(int gradeScoreReward = GameBalance::Rewards::bossGradeScore(),
+    void recordBossDefeated(int finalExamScore = GameBalance::CourseGrade::finalExamStartScore(),
                             int creditReward = GameBalance::Rewards::bossCredits())
     {
         m_bossDefeated = true;
-        addGradeScore(gradeScoreReward);
+        setFinalExamScore(finalExamScore);
         addCredits(creditReward);
         addCoins(GameBalance::Rewards::bossCoins());
     }
@@ -309,6 +333,7 @@ private:
         : m_hp(GameBalance::Player::startMaxHp()),
           m_maxHp(GameBalance::Player::startMaxHp()),
           m_gradeScore(0),
+          m_finalExamScore(0),
           m_credits(0),
           m_coins(GameBalance::Player::startCoins()),
           m_runSeed(1),
@@ -326,6 +351,7 @@ private:
     int m_hp;
     int m_maxHp;
     int m_gradeScore;
+    int m_finalExamScore;
     int m_credits;
     int m_coins;
     quint32 m_runSeed;

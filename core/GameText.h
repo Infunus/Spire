@@ -82,10 +82,19 @@ namespace GameText
         }
 
         inline QString battleTitleFormat() { return QStringLiteral("第 %1 战"); }
-        inline QString runClearTitle() { return QStringLiteral("通关 · 总评 A"); }
+        inline QString runClearTitle() { return QStringLiteral("通关 · 总评"); }
+        inline QString runClearTitleFormat() { return QStringLiteral("通关 · 总评 %1"); }
         inline QString battleWinFormat() { return QStringLiteral("胜利 · 击败 %1 个敌人"); }
         inline QString battleFailTitle() { return QStringLiteral("喜报：您已被退学！"); }
         inline QString victoryTip() { return QStringLiteral("完成作业！助教正在批阅……"); }
+        inline QString battleVictoryTipFormat()
+        {
+            return QStringLiteral("完成课程作业，获得 %1 平时分。当前平时分：%2");
+        }
+        inline QString finalVictoryTipFormat()
+        {
+            return QStringLiteral("期末成绩：%1；平时分：%2；总评：%3");
+        }
         inline QString failTip() { return QStringLiteral("心情归零，本次修读失败"); }
 
         inline QString playerHpFormat() { return QStringLiteral("心情 %1/%2"); }
@@ -94,7 +103,13 @@ namespace GameText
         inline QString strengthLabelFormat() { return QStringLiteral("效率值 +%1"); }
         inline QString playerInfoFormat()
         {
-            return QStringLiteral("回合 %1  |  精力 %2/%3  |  效率值 +%4");
+            return QStringLiteral("回合 %1  |  精力 %2/%3  |  效率值 +%4  |  平时分 %5");
+        }
+        inline QString usualScoreRewardFormat() { return QStringLiteral("击败 +%1 平时分"); }
+        inline QString finalExamScoreFormat() { return QStringLiteral("期末成绩 %1"); }
+        inline QString scoreRewardTooltipFormat()
+        {
+            return QStringLiteral("基础分会随回合数下降：当前第 %1 回合");
         }
 
         inline QString playerBlockStatusName() { return QStringLiteral("抗压值"); }
@@ -503,13 +518,13 @@ namespace GameText
 
         inline QString rewardWithPotion(int coins, const QString &potionName)
         {
-            return QStringLiteral("获得 %1 Money，并得到一瓶%2。选择一张卡加入牌组")
+            return QStringLiteral("获得 %1 Money，并得到一瓶 %2。选择一张卡加入牌组")
                 .arg(coins)
                 .arg(potionName);
         }
         inline QString rewardWithPotion()
         {
-            return QStringLiteral("获得 %1 Money，并得到一瓶抹茶拿铁。选择一张卡加入牌组")
+            return QStringLiteral("获得 %1 Money，并得到一瓶 抹茶拿铁。选择一张卡加入牌组")
                 .arg(GameBalance::Rewards::rewardScreenCoins());
         }
 

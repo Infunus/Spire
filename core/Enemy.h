@@ -47,6 +47,7 @@ public:
         : m_hp(0),
           m_maxHp(0),
           m_block(0),
+          m_usualScoreReward(0),
           m_strength(0),
           m_intentIndex(0),
           m_weakStacks(0),
@@ -58,13 +59,15 @@ public:
           int maxHp,
           const QString &imagePath,
           const QList<EnemyAction> &actions,
-          const QString &description = QString())
+          const QString &description = QString(),
+          int usualScoreReward = 0)
         : m_name(name),
           m_hp(maxHp),
           m_maxHp(maxHp),
           m_block(0),
           m_imagePath(imagePath),
           m_description(description),
+          m_usualScoreReward(usualScoreReward),
           m_strength(0),
           m_actions(actions),
           m_intentIndex(0),
@@ -79,6 +82,7 @@ public:
     int block() const { return m_block; }
     QString imagePath() const { return m_imagePath; }
     QString description() const { return m_description; }
+    int usualScoreReward() const { return m_usualScoreReward; }
     int intentIndex() const { return m_intentIndex; }
     bool isDead() const { return m_hp <= 0; }
     int weakStacks() const { return m_weakStacks; }
@@ -263,7 +267,8 @@ public:
                      GameBalance::Enemies::CampusCultist::maxHp(),
                      GameText::EnemyText::campusCultistImage(),
                      actions,
-                     GameText::EnemyText::campusCultistDescription());
+                     GameText::EnemyText::campusCultistDescription(),
+                     GameBalance::CourseGrade::campusCultistScore());
     }
 
     static Enemy createProgramProject()
@@ -283,7 +288,8 @@ public:
                      GameBalance::Enemies::ProjectNob::maxHp(),
                      GameText::EnemyText::projectNobImage(),
                      actions,
-                     GameText::EnemyText::projectNobDescription());
+                     GameText::EnemyText::projectNobDescription(),
+                     GameBalance::CourseGrade::projectNobScore());
     }
 
     static Enemy createMidterm()
@@ -303,7 +309,8 @@ public:
                      GameBalance::Enemies::HomeworkWorm::maxHp(),
                      GameText::EnemyText::homeworkWormImage(),
                      actions,
-                     GameText::EnemyText::homeworkWormDescription());
+                     GameText::EnemyText::homeworkWormDescription(),
+                     GameBalance::CourseGrade::homeworkWormScore());
     }
 
     static Enemy createDdlSlime()
@@ -316,7 +323,8 @@ public:
                      GameBalance::Enemies::DdlSlime::maxHp(),
                      GameText::EnemyText::ddlSlimeImage(),
                      actions,
-                     GameText::EnemyText::ddlSlimeDescription());
+                     GameText::EnemyText::ddlSlimeDescription(),
+                     GameBalance::CourseGrade::ddlSlimeScore());
     }
 
     static Enemy createFinalExam()
@@ -377,6 +385,7 @@ private:
     int m_block;
     QString m_imagePath;
     QString m_description;
+    int m_usualScoreReward;
     int m_strength;
     QList<EnemyAction> m_actions;
     int m_intentIndex;

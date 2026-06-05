@@ -473,9 +473,10 @@ public:
           m_healthBar(new QProgressBar(this)),
           m_statusPanel(new QWidget(this)),
           m_statusLayout(new QHBoxLayout(m_statusPanel)),
+          m_scoreLabel(new QLabel(this)),
           m_intentLabel(new QLabel(this))
     {
-        setFixedSize(240, 285);
+        setFixedSize(240, 320);
         setAttribute(Qt::WA_StyledBackground, true);
         setStyleSheet("EnemyUnitWidget { background: transparent; }");
 
@@ -509,6 +510,13 @@ public:
         m_statusLayout->setSpacing(5);
         m_statusPanel->setStyleSheet("background: transparent;");
 
+        m_scoreLabel->setAlignment(Qt::AlignCenter);
+        m_scoreLabel->setFixedSize(200, 28);
+        m_scoreLabel->setStyleSheet(
+            "QLabel { background: rgba(74, 48, 18, 168);"
+            "border: 1px solid rgba(255, 226, 168, 155); border-radius: 10px;"
+            "color: #ffe3a0; font-size: 13px; font-weight: 900; padding: 4px; }");
+
         m_intentLabel->setAlignment(Qt::AlignCenter);
         m_intentLabel->setWordWrap(true);
         m_intentLabel->setFixedSize(200, 60);
@@ -528,12 +536,13 @@ public:
         hpLayout->addWidget(m_healthBar);
         root->addLayout(hpLayout);
         root->addWidget(m_statusPanel, 0, Qt::AlignCenter);
+        root->addWidget(m_scoreLabel, 0, Qt::AlignCenter);
         root->addWidget(m_intentLabel, 0, Qt::AlignCenter);
     }
 
     QWidget *portraitAnchor() const { return m_portraitLabel; }
 
-    void setEnemy(const Enemy &enemy)
+    void setEnemy(const Enemy &enemy, int scoreReward, int turnNumber, bool finalExam)
     {
         if (!enemy.imagePath().isEmpty()) {
             const QPixmap enemyPixmap(findProjectAssetPath(enemy.imagePath()));
@@ -560,6 +569,10 @@ public:
                                      : QString());
         m_intentLabel->setText(QStringLiteral("%1\n%2").arg(enemy.name(), enemy.intentText()));
         m_intentLabel->setToolTip(enemy.intentTooltip());
+        m_scoreLabel->setText(finalExam
+                                  ? GameText::Battle::finalExamScoreFormat().arg(scoreReward)
+                                  : GameText::Battle::usualScoreRewardFormat().arg(scoreReward));
+        m_scoreLabel->setToolTip(GameText::Battle::scoreRewardTooltipFormat().arg(qMax(1, turnNumber)));
 
         rebuildStatuses(enemy);
         setVisible(!enemy.isDead());
@@ -604,6 +617,7 @@ private:
     QProgressBar *m_healthBar;
     QWidget *m_statusPanel;
     QHBoxLayout *m_statusLayout;
+    QLabel *m_scoreLabel;
     QLabel *m_intentLabel;
 };
 
@@ -634,6 +648,7 @@ BattleWidget::BattleWidget(QWidget *parent)
       m_turnNumber(1),
       m_battleNumber(1),
       m_enemiesDefeated(0),
+      m_pendingUsualScoreReward(0),
       m_hoveredCardIndex(-1),
       m_dragCardIndex(-1),
       m_dragPotionIndex(-1),
@@ -933,6 +948,11 @@ void BattleWidget::startBattle()
     m_hand.setDeck(m_cardLibrary);
     m_exhaustPile.clear();
     m_enemies = createEnemiesForBattle();
+    m_enemyScoreCollected.clear();
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        m_enemyScoreCollected.append(false);
+    }
+    m_pendingUsualScoreReward = 0;
     rebuildEnemyWidgets();
     m_playerBlock = 0;
     m_playerStrength = 0;
@@ -1291,7 +1311,10 @@ void BattleWidget::refreshUi()
     rebuildStatusIcons(m_playerStatusLayout, playerStatuses);
 
     for (int i = 0; i < m_enemyWidgets.size() && i < m_enemies.size(); ++i) {
-        m_enemyWidgets.at(i)->setEnemy(m_enemies.at(i));
+        const bool finalExam = m_battleNumber >= GameBalance::Battle::bossBattleNumber();
+        const int scoreReward = finalExam ? currentFinalExamScore()
+                                          : currentUsualScoreRewardForEnemy(m_enemies.at(i));
+        m_enemyWidgets.at(i)->setEnemy(m_enemies.at(i), scoreReward, m_turnNumber, finalExam);
     }
     layoutEnemyWidgets();
 
@@ -1299,7 +1322,8 @@ void BattleWidget::refreshUi()
                                    .arg(m_turnNumber)
                                    .arg(m_energy)
                                    .arg(m_maxEnergy)
-                                   .arg(m_playerStrength));
+                                   .arg(m_playerStrength)
+                                   .arg(GameState::instance().usualScore()));
 
     if (!m_battleEnded) {
         m_tipLabel->setText(GameText::Battle::handTipText());
@@ -1319,7 +1343,10 @@ void BattleWidget::rebuildEnemyWidgets()
     for (int i = 0; i < m_enemies.size(); ++i) {
         EnemyUnitWidget *enemyWidget = new EnemyUnitWidget(m_enemyBoard);
         enemyWidget->setProperty("enemyIndex", i);
-        enemyWidget->setEnemy(m_enemies.at(i));
+        const bool finalExam = m_battleNumber >= GameBalance::Battle::bossBattleNumber();
+        const int scoreReward = finalExam ? currentFinalExamScore()
+                                          : currentUsualScoreRewardForEnemy(m_enemies.at(i));
+        enemyWidget->setEnemy(m_enemies.at(i), scoreReward, m_turnNumber, finalExam);
         enemyWidget->show();
         m_enemyWidgets.append(enemyWidget);
     }
@@ -1346,7 +1373,7 @@ void BattleWidget::layoutEnemyWidgets()
         return;
     }
 
-    const QSize unitSize(240, 285);
+    const QSize unitSize(240, 320);
     const int centerX = m_enemyBoard->width() / 2;
     const int centerY = m_enemyBoard->height() / 2;
     const int horizontalStep = aliveCount <= 2 ? 222 : 184;
@@ -1518,6 +1545,26 @@ void BattleWidget::clearStatusLayout(QHBoxLayout *layout)
     }
 }
 
+void BattleWidget::collectEnemyScoreIfDefeated(int enemyIndex)
+{
+    if (m_battleNumber >= GameBalance::Battle::bossBattleNumber()
+        || enemyIndex < 0
+        || enemyIndex >= m_enemies.size()) {
+        return;
+    }
+
+    while (m_enemyScoreCollected.size() < m_enemies.size()) {
+        m_enemyScoreCollected.append(false);
+    }
+
+    if (!m_enemies.at(enemyIndex).isDead() || m_enemyScoreCollected.at(enemyIndex)) {
+        return;
+    }
+
+    m_enemyScoreCollected[enemyIndex] = true;
+    m_pendingUsualScoreReward += currentUsualScoreRewardForEnemy(m_enemies.at(enemyIndex));
+}
+
 void BattleWidget::applyRelicsAtBattleStart()
 {
     const QList<RelicData> relics = GameState::instance().relics();
@@ -1580,6 +1627,7 @@ void BattleWidget::usePotionAt(int potionIndex, int targetEnemyIndex)
         Enemy &enemy = m_enemies[targetEnemyIndex];
         const int shownDamage = enemy.previewIncomingDamage(potion.amount);
         enemy.takeDamage(potion.amount);
+        collectEnemyScoreIfDefeated(targetEnemyIndex);
         if (targetEnemyIndex < m_enemyWidgets.size()) {
             showSlashEffect(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor());
             showDamagePopup(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor(), shownDamage);
@@ -1633,6 +1681,7 @@ void BattleWidget::playCard(int handIndex, int targetEnemyIndex)
         Enemy &enemy = m_enemies[targetEnemyIndex];
         const int shownDamage = enemy.previewIncomingDamage(damage);
         enemy.takeDamage(damage);
+        collectEnemyScoreIfDefeated(targetEnemyIndex);
         if (targetEnemyIndex < m_enemyWidgets.size()) {
             showSlashEffect(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor());
             showDamagePopup(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor(), shownDamage);
@@ -1974,23 +2023,40 @@ bool BattleWidget::checkBattleEnd()
     }
 
     if (allEnemiesDead()) {
+        for (int i = 0; i < m_enemies.size(); ++i) {
+            collectEnemyScoreIfDefeated(i);
+        }
+        const int defeatedEnemyCount = qMax(1, m_enemies.size());
+        const int usualScoreReward = m_pendingUsualScoreReward > 0
+                                         ? m_pendingUsualScoreReward
+                                         : currentBattleUsualScoreReward();
+        const int finalExamScore = currentFinalExamScore();
         m_battleEnded = true;
         m_playerTurn = false;
-        ++m_enemiesDefeated;
+        m_enemiesDefeated += defeatedEnemyCount;
         applyRelicsAfterBattleWin();
         m_hand.discardHand();
         rebuildHandButtons();
 
         if (m_battleNumber >= GameBalance::Battle::bossBattleNumber()) {
             m_runFinished = true;
-            GameState::instance().recordBossDefeated();
-            m_titleLabel->setText(GameText::Battle::runClearTitle());
+            GameState::instance().recordBossDefeated(finalExamScore);
+            m_titleLabel->setText(GameText::Battle::runClearTitleFormat()
+                                      .arg(GameState::instance().totalScore()));
+            m_tipLabel->setText(GameText::Battle::finalVictoryTipFormat()
+                                    .arg(GameState::instance().finalExamScore())
+                                    .arg(GameState::instance().usualScore())
+                                    .arg(GameState::instance().totalScore()));
         } else {
             ++m_battleNumber;
-            GameState::instance().recordEnemyDefeated();
+            GameState::instance().recordEnemyDefeated(usualScoreReward,
+                                                      GameBalance::Rewards::battleCredits(),
+                                                      defeatedEnemyCount);
             m_titleLabel->setText(GameText::Battle::battleWinFormat().arg(m_enemiesDefeated));
+            m_tipLabel->setText(GameText::Battle::battleVictoryTipFormat()
+                                    .arg(usualScoreReward)
+                                    .arg(GameState::instance().usualScore()));
         }
-        m_tipLabel->setText(GameText::Battle::victoryTip());
         refreshUi();
         scheduleMapCallback(true);
         return true;
@@ -2069,6 +2135,33 @@ int BattleWidget::playerAttackDamage(const Card &card) const
         return 0;
     }
     return qMax(0, card.damage() + m_playerStrength * qMax(1, card.strengthMultiplier()));
+}
+
+int BattleWidget::currentUsualScoreRewardForEnemy(const Enemy &enemy) const
+{
+    const int baseScore = enemy.usualScoreReward();
+    if (baseScore <= 0) {
+        return 0;
+    }
+
+    const int decay = qMax(0, m_turnNumber - 1) * GameBalance::CourseGrade::enemyScoreDecayPerTurn();
+    return qMax(GameBalance::CourseGrade::enemyMinimumScore(), baseScore - decay);
+}
+
+int BattleWidget::currentBattleUsualScoreReward() const
+{
+    int reward = 0;
+    for (const Enemy &enemy : m_enemies) {
+        reward += currentUsualScoreRewardForEnemy(enemy);
+    }
+    return reward;
+}
+
+int BattleWidget::currentFinalExamScore() const
+{
+    const int decay = qMax(0, m_turnNumber - 1) * GameBalance::CourseGrade::finalExamDecayPerTurn();
+    return qMax(GameBalance::CourseGrade::finalExamMinimumScore(),
+                GameBalance::CourseGrade::finalExamStartScore() - decay);
 }
 
 void BattleWidget::showSlashEffect(QWidget *anchor)

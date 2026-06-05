@@ -136,7 +136,7 @@ public:
             "  color: #f4ead2;"
             "  font-size: 15px;"
             "  font-weight: 900;"
-            "  padding: 6px;"
+            "  padding: 5px 10px;"
             "}"
             "QPushButton:hover { background: rgba(72, 87, 110, 230); }"
             "QPushButton:disabled { color: rgba(244, 234, 210, 125); }");
@@ -202,7 +202,7 @@ public:
 
                 QPushButton *button = new QPushButton(nodeName(room->type), m_canvas);
                 button->setCursor(Qt::PointingHandCursor);
-                button->setFixedSize(bossLayer ? QSize(104, 72) : QSize(86, 58));
+                button->setFixedSize(bossLayer ? QSize(154, 78) : QSize(132, 66));
                 button->setIcon(nodeIcon(room->type));
                 button->setIconSize(bossLayer ? QSize(30, 30) : QSize(22, 22));
                 connect(button, &QPushButton::clicked, this, [this, room]() {
