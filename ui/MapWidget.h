@@ -30,6 +30,7 @@ struct MapRoomData
     int index = 0;
     MapNodeType type = MapNodeType::Battle;
     QPushButton *button = nullptr;
+    QList<int> nextRoomIds;
     bool available = false;
     bool completed = false;
     bool pending = false;
@@ -87,6 +88,19 @@ private:
         return button ? button->geometry().center() : QPoint();
     }
 
+    MapRoomData *roomById(int id) const
+    {
+        if (!m_rooms) {
+            return nullptr;
+        }
+        for (MapRoomData *room : *m_rooms) {
+            if (room && room->id == id) {
+                return room;
+            }
+        }
+        return nullptr;
+    }
+
     void drawConnections(QPainter *painter)
     {
         if (!m_rooms) {
@@ -100,15 +114,13 @@ private:
             if (!from || !from->button) {
                 continue;
             }
-            for (MapRoomData *to : *m_rooms) {
-                if (!to || !to->button || to->layer != from->layer + 1) {
-                    continue;
-                }
-                if (qAbs(to->index - from->index) > 1 && to->index != 0 && from->index != 0) {
+            for (int targetId : from->nextRoomIds) {
+                MapRoomData *to = roomById(targetId);
+                if (!to || !to->button) {
                     continue;
                 }
 
-                const bool highlighted = from->completed || from->pending || to->available;
+                const bool highlighted = from->completed || from->pending;
                 painter->setPen(highlighted ? activePen : basePen);
                 painter->drawLine(buttonCenter(from->button), buttonCenter(to->button));
             }
@@ -224,6 +236,8 @@ public:
             }
         }
 
+        generateRoomConnections();
+        updateAvailabilityForCurrentLayer();
         layoutRooms();
         refreshButtons();
         QTimer::singleShot(0, this, [this]() {
@@ -242,10 +256,7 @@ public:
         ++m_currentLayer;
         m_pendingRoom = nullptr;
 
-        for (MapRoomData *room : m_rooms) {
-            room->available = (room->layer == m_currentLayer);
-        }
-
+        updateAvailabilityForCurrentLayer();
         refreshButtons();
         centerCurrentLayer();
     }
@@ -259,10 +270,9 @@ public:
         const int layer = m_pendingRoom->layer;
         m_pendingRoom->pending = false;
         m_pendingRoom = nullptr;
+        m_currentLayer = layer;
 
-        for (MapRoomData *room : m_rooms) {
-            room->available = (room->layer == layer && !room->completed);
-        }
+        updateAvailabilityForCurrentLayer();
         refreshButtons();
     }
 
@@ -282,6 +292,11 @@ public:
             roomObject[QStringLiteral("available")] = room->available;
             roomObject[QStringLiteral("completed")] = room->completed;
             roomObject[QStringLiteral("pending")] = room->pending;
+            QJsonArray nextRoomArray;
+            for (int nextRoomId : room->nextRoomIds) {
+                nextRoomArray.append(nextRoomId);
+            }
+            roomObject[QStringLiteral("nextRoomIds")] = nextRoomArray;
             roomArray.append(roomObject);
         }
 
@@ -307,7 +322,7 @@ public:
         m_pendingRoom = nullptr;
         m_currentLayer = qBound(0,
                                 json.value(QStringLiteral("currentLayer")).toInt(0),
-                                m_layerCount);
+                                m_layerCount - 1);
 
         const int canvasHeight = mapCanvasHeight();
         const int canvasWidth = qMax(900, m_scrollArea->viewport()->width());
@@ -333,6 +348,10 @@ public:
             room->available = roomObject.value(QStringLiteral("available")).toBool(false);
             room->completed = roomObject.value(QStringLiteral("completed")).toBool(false);
             room->pending = roomObject.value(QStringLiteral("pending")).toBool(false);
+            const QJsonArray nextRoomArray = roomObject.value(QStringLiteral("nextRoomIds")).toArray();
+            for (const QJsonValue &nextValue : nextRoomArray) {
+                room->nextRoomIds.append(nextValue.toInt(-1));
+            }
 
             const bool bossRoom = room->type == MapNodeType::Boss;
             QPushButton *button = new QPushButton(nodeName(room->type), m_canvas);
@@ -359,6 +378,10 @@ public:
             return false;
         }
 
+        ensureRoomConnections();
+        if (!m_pendingRoom) {
+            updateAvailabilityForCurrentLayer();
+        }
         layoutRooms();
         refreshButtons();
         QTimer::singleShot(0, this, [this]() {
@@ -386,6 +409,143 @@ private:
     int mapCanvasHeight() const
     {
         return qMax(2200, 360 + m_layerCount * 260);
+    }
+
+    QList<MapRoomData *> roomsAtLayer(int layer) const
+    {
+        QList<MapRoomData *> rooms;
+        for (MapRoomData *room : m_rooms) {
+            if (room && room->layer == layer) {
+                rooms.append(room);
+            }
+        }
+        return rooms;
+    }
+
+    MapRoomData *roomById(int id) const
+    {
+        for (MapRoomData *room : m_rooms) {
+            if (room && room->id == id) {
+                return room;
+            }
+        }
+        return nullptr;
+    }
+
+    void addConnection(MapRoomData *from, const QList<MapRoomData *> &nextRooms, int targetIndex)
+    {
+        if (!from || targetIndex < 0 || targetIndex >= nextRooms.size()) {
+            return;
+        }
+        const int targetId = nextRooms.at(targetIndex)->id;
+        if (!from->nextRoomIds.contains(targetId)) {
+            from->nextRoomIds.append(targetId);
+        }
+    }
+
+    void generateRoomConnections()
+    {
+        for (MapRoomData *room : m_rooms) {
+            if (room) {
+                room->nextRoomIds.clear();
+            }
+        }
+
+        for (int layer = 0; layer < m_layerCount - 1; ++layer) {
+            const QList<MapRoomData *> currentRooms = roomsAtLayer(layer);
+            const QList<MapRoomData *> nextRooms = roomsAtLayer(layer + 1);
+            if (currentRooms.isEmpty() || nextRooms.isEmpty()) {
+                continue;
+            }
+
+            for (MapRoomData *room : currentRooms) {
+                if (nextRooms.size() == 1) {
+                    addConnection(room, nextRooms, 0);
+                    continue;
+                }
+
+                const int column = qBound(0, room->index, nextRooms.size() - 1);
+                addConnection(room, nextRooms, column);
+
+                if (layer % 2 == 0) {
+                    if (column == 0) {
+                        addConnection(room, nextRooms, 1);
+                    } else if (column == nextRooms.size() - 1) {
+                        addConnection(room, nextRooms, nextRooms.size() - 2);
+                    }
+                } else if (column == GameBalance::Map::bossRoomIndex()) {
+                    const int side = GameRandom::instance().bounded(2) == 0 ? column - 1 : column + 1;
+                    addConnection(room, nextRooms, qBound(0, side, nextRooms.size() - 1));
+                }
+            }
+        }
+    }
+
+    bool hasValidConnection(const MapRoomData *from) const
+    {
+        if (!from || from->layer >= m_layerCount - 1) {
+            return true;
+        }
+        for (int targetId : from->nextRoomIds) {
+            const MapRoomData *target = roomById(targetId);
+            if (target && target->layer == from->layer + 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void ensureRoomConnections()
+    {
+        for (const MapRoomData *room : m_rooms) {
+            if (!hasValidConnection(room)) {
+                generateRoomConnections();
+                return;
+            }
+        }
+    }
+
+    bool hasCompletedIncomingConnection(const MapRoomData *target) const
+    {
+        if (!target) {
+            return false;
+        }
+        for (const MapRoomData *room : m_rooms) {
+            if (room
+                && room->completed
+                && room->layer == target->layer - 1
+                && room->nextRoomIds.contains(target->id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void updateAvailabilityForCurrentLayer()
+    {
+        bool anyAvailable = false;
+        for (MapRoomData *room : m_rooms) {
+            if (!room) {
+                continue;
+            }
+            room->available = false;
+            if (room->completed || room->pending || room->layer != m_currentLayer) {
+                continue;
+            }
+
+            room->available = m_currentLayer == 0 || hasCompletedIncomingConnection(room);
+            anyAvailable = anyAvailable || room->available;
+        }
+
+        if (anyAvailable || m_currentLayer <= 0) {
+            return;
+        }
+
+        for (MapRoomData *room : m_rooms) {
+            if (room && room->layer == m_currentLayer && !room->completed && !room->pending) {
+                room->available = true;
+            }
+        }
     }
 
     MapNodeType nodeTypeForLayer(int layer, int index) const

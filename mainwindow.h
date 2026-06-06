@@ -13,6 +13,7 @@ class EventWidget;
 class MapWidget;
 class RewardWidget;
 class ShopWidget;
+class QCloseEvent;
 class QPushButton;
 class QStackedWidget;
 class QWidget;
@@ -35,6 +36,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private:
     QWidget *createMenuPage();
     QWidget *createMapPage();
@@ -43,10 +47,13 @@ private:
     QWidget *createEventPreviewPage(const RandomEventData &eventData, bool fromMap = false);
     QWidget *createShopPage(bool fromMap = false);
     QWidget *createRewardPage(bool fromMap = false);
+    QWidget *createRestPage(bool fromMap = false);
     QWidget *createEventCardRewardPage(const RandomEventChoice &choice,
                                        bool fromMap = false,
                                        int rewardIndex = 0,
                                        int rewardCount = 1);
+    QWidget *createDeathPage();
+    QWidget *createSettlementPage();
     QWidget *createMapNodePlaceholderPage(const QString &title, const QString &body);
     QWidget *createDebugPlaceholderPage(const QString &title, const QString &body);
     QPushButton *createSettingsButton(QWidget *parent);
@@ -62,6 +69,8 @@ private:
     void showEventPreviewPage(const RandomEventData &eventData);
     void showRewardPage(bool fromMap = false);
     void showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false, int rewardIndex = 0);
+    void showDeathPage();
+    void showSettlementPage();
     void showDebugPlaceholderPage(const QString &title, const QString &body);
     void openMapNode(MapNodeType nodeType);
     void finishMapNode(bool completed);
@@ -80,6 +89,9 @@ private:
     QString saveFilePath() const;
     bool saveFileExists() const;
     void updateContinueButtonVisibility();
+    void deleteSaveFile();
+    void connectRunStatusDeckButton(QWidget *root);
+    void showDeckDialog(const QString &title);
     bool saveRunToDisk();
     bool loadRunFromDisk();
     QStringList worldMusicFiles() const;
@@ -94,6 +106,8 @@ private:
     QWidget *m_rewardPage;
     QWidget *m_debugPage;
     QWidget *m_mapNodePage;
+    QWidget *m_deathPage;
+    QWidget *m_settlementPage;
     MapWidget *m_mapWidget;
     BattleWidget *m_battleWidget;
     EventWidget *m_eventWidget;

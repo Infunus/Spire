@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "core/Card.h"
 #include "core/EventLibrary.h"
 #include "core/GameState.h"
 #include "core/GameText.h"
@@ -6,12 +7,15 @@
 #include "ui/EventWidget.h"
 #include "ui/MapWidget.h"
 #include "ui/RewardWidget.h"
+#include "ui/RestWidget.h"
 #include "ui/ShopWidget.h"
 #include "ui_mainwindow.h"
 
 #include <QAction>
 #include <QApplication>
+#include <QCloseEvent>
 #include <QCoreApplication>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -34,6 +38,7 @@
 #include <QSlider>
 #include <QStackedWidget>
 #include <QStringList>
+#include <QTextEdit>
 #include <QTimer>
 #include <QtGlobal>
 #include <QVBoxLayout>
@@ -44,6 +49,7 @@ namespace
 const char *RunStatusMoodValue = "RunStatusMoodValue";
 const char *RunStatusCoinsValue = "RunStatusCoinsValue";
 const char *RunStatusUsualScoreValue = "RunStatusUsualScoreValue";
+const char *RunStatusDeckButton = "RunStatusDeckButton";
 
 QFrame *createRunStatusTile(QWidget *parent,
                             const QString &caption,
@@ -94,6 +100,30 @@ QFrame *createRunStatusTile(QWidget *parent,
     return tile;
 }
 
+QPushButton *createRunStatusDeckButton(QWidget *parent)
+{
+    QPushButton *button = new QPushButton(QStringLiteral("查看卡组"), parent);
+    button->setObjectName(QString::fromLatin1(RunStatusDeckButton));
+    button->setCursor(Qt::PointingHandCursor);
+    button->setFixedHeight(34);
+    button->setMinimumWidth(104);
+    button->setStyleSheet(
+        "QPushButton#RunStatusDeckButton {"
+        "  background: rgba(255, 226, 168, 42);"
+        "  border: 1px solid rgba(255, 226, 168, 125);"
+        "  border-radius: 7px;"
+        "  color: #fff7de;"
+        "  font-size: 14px;"
+        "  font-weight: 900;"
+        "  padding: 6px 12px;"
+        "}"
+        "QPushButton#RunStatusDeckButton:hover {"
+        "  background: rgba(255, 226, 168, 78);"
+        "  border-color: rgba(255, 238, 190, 180);"
+        "}");
+    return button;
+}
+
 QWidget *createRunStatusStrip(QWidget *parent)
 {
     QWidget *strip = new QWidget(parent);
@@ -115,6 +145,7 @@ QWidget *createRunStatusStrip(QWidget *parent)
                                           QStringLiteral("平时分"),
                                           QString::fromLatin1(RunStatusUsualScoreValue),
                                           QColor(72, 188, 166)));
+    layout->addWidget(createRunStatusDeckButton(strip));
 
     return strip;
 }
@@ -143,6 +174,51 @@ void refreshRunStatusStrip(QWidget *root)
     setRunStatusValue(root,
                       RunStatusUsualScoreValue,
                       QString::number(state.usualScore()));
+}
+
+void startRunStatusRefreshTimer(QWidget *root)
+{
+    if (!root) {
+        return;
+    }
+
+    QTimer *timer = new QTimer(root);
+    timer->setInterval(200);
+    QObject::connect(timer, &QTimer::timeout, root, [root]() {
+        refreshRunStatusStrip(root);
+    });
+    timer->start();
+}
+
+QString viewMapButtonText()
+{
+    return QStringLiteral("查看地图");
+}
+
+double settlementGpaForScore(int score)
+{
+    const double delta = 100.0 - score;
+    return 4.0 - 3.0 * delta * delta / 1600.0;
+}
+
+QString settlementRatingForScore(int score)
+{
+    if (score < 60) {
+        return QStringLiteral("挂科");
+    }
+    if (score < 75) {
+        return QStringLiteral("一般");
+    }
+    if (score < 85) {
+        return QStringLiteral("良好");
+    }
+    if (score < 95) {
+        return QStringLiteral("优秀");
+    }
+    if (score < 100) {
+        return QStringLiteral("超优");
+    }
+    return QStringLiteral("彩虹");
 }
 }
 
@@ -203,6 +279,8 @@ MainWindow::MainWindow(QWidget *parent)
       m_rewardPage(nullptr),
       m_debugPage(nullptr),
       m_mapNodePage(nullptr),
+      m_deathPage(nullptr),
+      m_settlementPage(nullptr),
       m_mapWidget(nullptr),
       m_battleWidget(nullptr),
       m_eventWidget(nullptr),
@@ -231,6 +309,12 @@ MainWindow::~MainWindow()
 {
     stopAllMusic();
     delete ui;
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    saveRunToDisk();
+    QMainWindow::closeEvent(event);
 }
 
 QWidget *MainWindow::createMenuPage()
@@ -468,7 +552,14 @@ QWidget *MainWindow::createMenuPage()
         m_pages->setCurrentWidget(m_shopPage);
     });
     connect(debugRestButton, &QPushButton::clicked, this, [this]() {
-        showDebugPlaceholderPage(GameText::DebugText::restTitle(), GameText::DebugText::restBody());
+        if (m_debugPage) {
+            m_pages->removeWidget(m_debugPage);
+            m_debugPage->deleteLater();
+            m_debugPage = nullptr;
+        }
+        m_debugPage = createRestPage(false);
+        m_pages->addWidget(m_debugPage);
+        m_pages->setCurrentWidget(m_debugPage);
     });
 
     updateContinueButtonVisibility();
@@ -631,12 +722,13 @@ QWidget *MainWindow::createMapPage()
     m_mapTopButton->setObjectName("MenuButton");
     m_mapTopButton->setCursor(Qt::PointingHandCursor);
 
+    topLayout->addWidget(m_mapTopButton);
+    topLayout->addSpacing(14);
     topLayout->addWidget(titleLabel);
     topLayout->addSpacing(14);
     topLayout->addWidget(statusStrip);
     topLayout->addStretch();
     addSettingsButton(topLayout, topBar);
-    topLayout->addWidget(m_mapTopButton);
 
     m_mapWidget = new MapWidget(page);
     m_mapWidget->setBackgroundImage(assetPath(GameText::Assets::mapBackground()));
@@ -646,7 +738,9 @@ QWidget *MainWindow::createMapPage()
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_mapWidget, 1);
+    connectRunStatusDeckButton(page);
     refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
 
     connect(m_mapTopButton, &QPushButton::clicked, this, &MainWindow::handleMapTopButton);
 
@@ -690,7 +784,7 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
 
     QWidget *statusStrip = createRunStatusStrip(topBar);
 
-    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+    QPushButton *menuButton = new QPushButton(fromMap ? viewMapButtonText()
                                                        : GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
@@ -706,7 +800,9 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
     if (fromMap) {
         m_battleWidget->startMapBattle(bossBattle, [this](bool victory) {
             stopMusic();
-            if (victory && m_activeMapNodeType == MapNodeType::Battle) {
+            if (victory && m_activeMapNodeType == MapNodeType::Boss) {
+                showSettlementPage();
+            } else if (victory && m_activeMapNodeType == MapNodeType::Battle) {
                 showRewardPage(true);
             } else {
                 finishMapNode(victory);
@@ -718,20 +814,15 @@ QWidget *MainWindow::createBattlePage(bool bossBattle, bool fromMap)
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_battleWidget, 1);
+    connectRunStatusDeckButton(page);
     refreshRunStatusStrip(page);
-
-    QTimer *statusRefreshTimer = new QTimer(page);
-    statusRefreshTimer->setInterval(150);
-    connect(statusRefreshTimer, &QTimer::timeout, page, [page]() {
-        refreshRunStatusStrip(page);
-    });
-    statusRefreshTimer->start();
+    startRunStatusRefreshTimer(page);
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
-        pauseMusic();
         if (fromMap) {
-            showMapPage(false);
+            showMapPreviewFromCurrentNode();
         } else {
+            pauseMusic();
             m_pages->setCurrentIndex(0);
         }
     });
@@ -781,11 +872,16 @@ QWidget *MainWindow::createEventPreviewPage(const RandomEventData &eventData, bo
     QLabel *titleLabel = new QLabel(GameText::EventText::pageTitle(), topBar);
     titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
 
-    QPushButton *menuButton = new QPushButton(GameText::Menu::backToMenuButton(), topBar);
+    QWidget *statusStrip = createRunStatusStrip(topBar);
+
+    QPushButton *menuButton = new QPushButton(fromMap ? viewMapButtonText()
+                                                       : GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
 
     topLayout->addWidget(titleLabel);
+    topLayout->addSpacing(14);
+    topLayout->addWidget(statusStrip);
     topLayout->addStretch();
     addSettingsButton(topLayout, topBar);
     topLayout->addWidget(menuButton);
@@ -803,6 +899,10 @@ QWidget *MainWindow::createEventPreviewPage(const RandomEventData &eventData, bo
             if (fromMap) {
                 EventLibrary::applyChoiceEffect(choice, false);
                 GameState::instance().recordEventFinished();
+                if (GameState::instance().isDead()) {
+                    showDeathPage();
+                    return;
+                }
             }
             showEventCardRewardPage(choice, fromMap);
             return;
@@ -819,10 +919,13 @@ QWidget *MainWindow::createEventPreviewPage(const RandomEventData &eventData, bo
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_eventWidget, 1);
+    connectRunStatusDeckButton(page);
+    refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
         if (fromMap) {
-            finishMapNode(false);
+            showMapPreviewFromCurrentNode();
         } else {
             m_pages->setCurrentIndex(0);
         }
@@ -866,12 +969,16 @@ QWidget *MainWindow::createShopPage(bool fromMap)
     QLabel *titleLabel = new QLabel(GameText::ShopText::pageTitle(), topBar);
     titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
 
-    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+    QWidget *statusStrip = createRunStatusStrip(topBar);
+
+    QPushButton *menuButton = new QPushButton(fromMap ? viewMapButtonText()
                                                        : GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
 
     topLayout->addWidget(titleLabel);
+    topLayout->addSpacing(14);
+    topLayout->addWidget(statusStrip);
     topLayout->addStretch();
     addSettingsButton(topLayout, topBar);
     topLayout->addWidget(menuButton);
@@ -887,10 +994,13 @@ QWidget *MainWindow::createShopPage(bool fromMap)
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_shopWidget, 1);
+    connectRunStatusDeckButton(page);
+    refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
         if (fromMap) {
-            finishMapNode(false);
+            showMapPreviewFromCurrentNode();
         } else {
             m_pages->setCurrentIndex(0);
         }
@@ -934,12 +1044,16 @@ QWidget *MainWindow::createRewardPage(bool fromMap)
     QLabel *titleLabel = new QLabel(GameText::RewardText::pageTitle(), topBar);
     titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
 
-    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+    QWidget *statusStrip = createRunStatusStrip(topBar);
+
+    QPushButton *menuButton = new QPushButton(fromMap ? viewMapButtonText()
                                                        : GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
 
     topLayout->addWidget(titleLabel);
+    topLayout->addSpacing(14);
+    topLayout->addWidget(statusStrip);
     topLayout->addStretch();
     addSettingsButton(topLayout, topBar);
     topLayout->addWidget(menuButton);
@@ -956,14 +1070,322 @@ QWidget *MainWindow::createRewardPage(bool fromMap)
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_rewardWidget, 1);
+    connectRunStatusDeckButton(page);
+    refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
         if (fromMap) {
-            finishMapNode(false);
+            showMapPreviewFromCurrentNode();
         } else {
             m_pages->setCurrentIndex(0);
         }
     });
+
+    return page;
+}
+
+QWidget *MainWindow::createRestPage(bool fromMap)
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("RestPage");
+    page->setStyleSheet(
+        "#RestPage { background: #111722; }"
+        "QFrame#TopBar {"
+        "  background: #10131d;"
+        "  border-bottom: 1px solid rgba(255, 226, 168, 95);"
+        "}"
+        "QPushButton#MenuButton {"
+        "  background: rgba(255, 226, 168, 35);"
+        "  border: 1px solid rgba(255, 226, 168, 120);"
+        "  border-radius: 6px;"
+        "  color: #f7ead0;"
+        "  font-size: 15px;"
+        "  font-weight: 700;"
+        "  padding: 8px 14px;"
+        "}"
+        "QPushButton#MenuButton:hover { background: rgba(255, 226, 168, 70); }");
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    QFrame *topBar = new QFrame(page);
+    topBar->setObjectName("TopBar");
+    topBar->setFixedHeight(50);
+
+    QHBoxLayout *topLayout = new QHBoxLayout(topBar);
+    topLayout->setContentsMargins(18, 6, 18, 6);
+
+    QLabel *titleLabel = new QLabel(GameText::MapText::restNodeName(), topBar);
+    titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
+
+    QWidget *statusStrip = createRunStatusStrip(topBar);
+
+    QPushButton *menuButton = new QPushButton(fromMap ? viewMapButtonText()
+                                                       : GameText::Menu::backToMenuButton(), topBar);
+    menuButton->setObjectName("MenuButton");
+    menuButton->setCursor(Qt::PointingHandCursor);
+
+    topLayout->addWidget(titleLabel);
+    topLayout->addSpacing(14);
+    topLayout->addWidget(statusStrip);
+    topLayout->addStretch();
+    addSettingsButton(topLayout, topBar);
+    topLayout->addWidget(menuButton);
+
+    RestWidget *restWidget = new RestWidget(page);
+    restWidget->setFinishHandler([this, fromMap]() {
+        if (fromMap) {
+            finishMapNode(true);
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    rootLayout->addWidget(topBar);
+    rootLayout->addWidget(restWidget, 1);
+    connectRunStatusDeckButton(page);
+    refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
+
+    connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
+        if (fromMap) {
+            showMapPreviewFromCurrentNode();
+        } else {
+            m_pages->setCurrentIndex(0);
+        }
+    });
+
+    return page;
+}
+
+QWidget *MainWindow::createDeathPage()
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("DeathPage");
+    page->setStyleSheet(
+        "#DeathPage { background: #100d12; }"
+        "QFrame#DeathPanel {"
+        "  background: rgba(255, 238, 207, 232);"
+        "  border: 2px solid rgba(116, 43, 42, 190);"
+        "  border-radius: 8px;"
+        "}"
+        "QLabel { color: #27150f; }"
+        "QPushButton {"
+        "  background: #6f2d32;"
+        "  border: 1px solid #bd7b66;"
+        "  border-radius: 7px;"
+        "  color: #fff4df;"
+        "  font-size: 16px;"
+        "  font-weight: 900;"
+        "  padding: 10px 18px;"
+        "}"
+        "QPushButton:hover { background: #8b3a3f; border-color: #ffd2a3; }");
+
+    QFrame *panel = new QFrame(page);
+    panel->setObjectName("DeathPanel");
+    panel->setMinimumWidth(720);
+
+    QLabel *titleLabel = new QLabel(QStringLiteral("喜报：您已被退学！"), panel);
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setStyleSheet("font-size: 38px; font-weight: 900; color: #501717;");
+
+    QLabel *bodyLabel = new QLabel(QStringLiteral("您无法承受成为卷王的压力，陷入了抑郁"), panel);
+    bodyLabel->setAlignment(Qt::AlignCenter);
+    bodyLabel->setWordWrap(true);
+    bodyLabel->setStyleSheet("font-size: 19px; font-weight: 800; color: #3c2418;");
+
+    const GameState &state = GameState::instance();
+    QFrame *statsPanel = new QFrame(panel);
+    statsPanel->setStyleSheet(
+        "QFrame {"
+        "  background: rgba(80, 23, 23, 28);"
+        "  border: 1px solid rgba(80, 23, 23, 80);"
+        "  border-radius: 8px;"
+        "}"
+        "QLabel { font-size: 16px; font-weight: 850; color: #2b1911; }");
+
+    QGridLayout *statsLayout = new QGridLayout(statsPanel);
+    statsLayout->setContentsMargins(18, 16, 18, 16);
+    statsLayout->setHorizontalSpacing(28);
+    statsLayout->setVerticalSpacing(10);
+
+    auto addStat = [statsLayout, statsPanel](int row, int column, const QString &name, const QString &value) {
+        QLabel *label = new QLabel(QStringLiteral("%1：%2").arg(name, value), statsPanel);
+        statsLayout->addWidget(label, row, column);
+    };
+
+    addStat(0, 0, QStringLiteral("心情"), QStringLiteral("%1/%2").arg(qMax(0, state.hp())).arg(state.maxHp()));
+    addStat(0, 1, QStringLiteral("平时分"), QString::number(state.usualScore()));
+    addStat(1, 0, QStringLiteral("余额"), QString::number(state.coins()));
+    addStat(1, 1, QStringLiteral("修读层数"), QString::number(state.currentFloor()));
+    addStat(2, 0, QStringLiteral("击败敌人"), QString::number(state.defeatedEnemies()));
+    addStat(2, 1, QStringLiteral("事件完成"), QString::number(state.eventsFinished()));
+    addStat(3, 0, QStringLiteral("总评估分"), QString::number(state.totalScore()));
+
+    QPushButton *deckButton = new QPushButton(QStringLiteral("查看卡组"), panel);
+    QPushButton *restartButton = new QPushButton(QStringLiteral("重新来过"), panel);
+    QPushButton *menuButton = new QPushButton(QStringLiteral("返回主界面"), panel);
+    QPushButton *seedButton = new QPushButton(QStringLiteral("查看种子"), panel);
+
+    connect(deckButton, &QPushButton::clicked, this, [this]() {
+        showDeckDialog(QStringLiteral("本局卡组"));
+    });
+    connect(restartButton, &QPushButton::clicked, this, &MainWindow::startNewRunFromMenu);
+    connect(menuButton, &QPushButton::clicked, this, [this]() {
+        m_activeMapNodeType = MapNodeType::None;
+        stopMusic();
+        m_pages->setCurrentIndex(0);
+        updateContinueButtonVisibility();
+    });
+    connect(seedButton, &QPushButton::clicked, this, [this]() {
+        QMessageBox::information(this,
+                                 QStringLiteral("当前种子"),
+                                 QStringLiteral("本局种子：%1").arg(GameState::instance().runSeed()));
+    });
+
+    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    buttonLayout->setSpacing(14);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(restartButton);
+    buttonLayout->addWidget(menuButton);
+    buttonLayout->addWidget(seedButton);
+    buttonLayout->addStretch();
+
+    QVBoxLayout *panelLayout = new QVBoxLayout(panel);
+    panelLayout->setContentsMargins(40, 34, 40, 36);
+    panelLayout->setSpacing(18);
+    panelLayout->addWidget(titleLabel);
+    panelLayout->addWidget(bodyLabel);
+    panelLayout->addWidget(statsPanel);
+    panelLayout->addWidget(deckButton, 0, Qt::AlignCenter);
+    panelLayout->addLayout(buttonLayout);
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(54, 48, 54, 48);
+    rootLayout->addStretch();
+    rootLayout->addWidget(panel, 0, Qt::AlignCenter);
+    rootLayout->addStretch();
+
+    return page;
+}
+
+QWidget *MainWindow::createSettlementPage()
+{
+    QWidget *page = new QWidget(this);
+    page->setObjectName("SettlementPage");
+    page->setStyleSheet(
+        "#SettlementPage { background: #0f1411; }"
+        "QFrame#SettlementPanel {"
+        "  background: rgba(245, 248, 221, 235);"
+        "  border: 2px solid rgba(63, 116, 82, 190);"
+        "  border-radius: 8px;"
+        "}"
+        "QLabel { color: #182316; }"
+        "QPushButton {"
+        "  background: #2f704f;"
+        "  border: 1px solid #8fc79a;"
+        "  border-radius: 7px;"
+        "  color: #f4ffed;"
+        "  font-size: 16px;"
+        "  font-weight: 900;"
+        "  padding: 10px 18px;"
+        "}"
+        "QPushButton:hover { background: #3f8c61; border-color: #d7ffb9; }");
+
+    QFrame *panel = new QFrame(page);
+    panel->setObjectName("SettlementPanel");
+    panel->setMinimumWidth(760);
+
+    const GameState &state = GameState::instance();
+    const int totalScore = state.totalScore();
+    const double gpa = settlementGpaForScore(totalScore);
+    const QString rating = settlementRatingForScore(totalScore);
+
+    QLabel *titleLabel = new QLabel(QStringLiteral("本学期结算"), panel);
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setStyleSheet("font-size: 38px; font-weight: 900; color: #204b31;");
+
+    QLabel *summaryLabel = new QLabel(QStringLiteral("总评：%1    GPA：%2    评级：%3")
+                                          .arg(totalScore)
+                                          .arg(QString::number(gpa, 'f', 2))
+                                          .arg(rating),
+                                      panel);
+    summaryLabel->setAlignment(Qt::AlignCenter);
+    summaryLabel->setWordWrap(true);
+    summaryLabel->setStyleSheet("font-size: 21px; font-weight: 900; color: #1e3b27;");
+
+    QFrame *statsPanel = new QFrame(panel);
+    statsPanel->setStyleSheet(
+        "QFrame {"
+        "  background: rgba(32, 75, 49, 26);"
+        "  border: 1px solid rgba(32, 75, 49, 80);"
+        "  border-radius: 8px;"
+        "}"
+        "QLabel { font-size: 16px; font-weight: 850; color: #182316; }");
+
+    QGridLayout *statsLayout = new QGridLayout(statsPanel);
+    statsLayout->setContentsMargins(18, 16, 18, 16);
+    statsLayout->setHorizontalSpacing(28);
+    statsLayout->setVerticalSpacing(10);
+
+    auto addStat = [statsLayout, statsPanel](int row, int column, const QString &name, const QString &value) {
+        QLabel *label = new QLabel(QStringLiteral("%1：%2").arg(name, value), statsPanel);
+        statsLayout->addWidget(label, row, column);
+    };
+
+    addStat(0, 0, QStringLiteral("心情"), QStringLiteral("%1/%2").arg(qMax(0, state.hp())).arg(state.maxHp()));
+    addStat(0, 1, QStringLiteral("平时分"), QString::number(state.usualScore()));
+    addStat(1, 0, QStringLiteral("余额"), QString::number(state.coins()));
+    addStat(1, 1, QStringLiteral("修读层数"), QString::number(state.currentFloor()));
+    addStat(2, 0, QStringLiteral("击败敌人"), QString::number(state.defeatedEnemies()));
+    addStat(2, 1, QStringLiteral("事件完成"), QString::number(state.eventsFinished()));
+    addStat(3, 0, QStringLiteral("期末成绩"), QString::number(state.finalExamScore()));
+
+    QPushButton *deckButton = new QPushButton(QStringLiteral("查看卡组"), panel);
+    QPushButton *restartButton = new QPushButton(QStringLiteral("再来一学期"), panel);
+    QPushButton *seedButton = new QPushButton(QStringLiteral("显示种子"), panel);
+    QPushButton *menuButton = new QPushButton(QStringLiteral("返回主菜单"), panel);
+
+    connect(deckButton, &QPushButton::clicked, this, [this]() {
+        showDeckDialog(QStringLiteral("结算卡组"));
+    });
+    connect(restartButton, &QPushButton::clicked, this, &MainWindow::startNewRunFromMenu);
+    connect(seedButton, &QPushButton::clicked, this, [this]() {
+        QMessageBox::information(this,
+                                 QStringLiteral("当前种子"),
+                                 QStringLiteral("本局种子：%1").arg(GameState::instance().runSeed()));
+    });
+    connect(menuButton, &QPushButton::clicked, this, [this]() {
+        m_activeMapNodeType = MapNodeType::None;
+        stopMusic();
+        m_pages->setCurrentIndex(0);
+        updateContinueButtonVisibility();
+    });
+
+    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    buttonLayout->setSpacing(14);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(restartButton);
+    buttonLayout->addWidget(seedButton);
+    buttonLayout->addWidget(menuButton);
+    buttonLayout->addStretch();
+
+    QVBoxLayout *panelLayout = new QVBoxLayout(panel);
+    panelLayout->setContentsMargins(40, 34, 40, 36);
+    panelLayout->setSpacing(18);
+    panelLayout->addWidget(titleLabel);
+    panelLayout->addWidget(summaryLabel);
+    panelLayout->addWidget(statsPanel);
+    panelLayout->addWidget(deckButton, 0, Qt::AlignCenter);
+    panelLayout->addLayout(buttonLayout);
+
+    QVBoxLayout *rootLayout = new QVBoxLayout(page);
+    rootLayout->setContentsMargins(54, 48, 54, 48);
+    rootLayout->addStretch();
+    rootLayout->addWidget(panel, 0, Qt::AlignCenter);
+    rootLayout->addStretch();
 
     return page;
 }
@@ -1006,12 +1428,16 @@ QWidget *MainWindow::createEventCardRewardPage(const RandomEventChoice &choice,
     QLabel *titleLabel = new QLabel(QStringLiteral("卡牌奖励"), topBar);
     titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
 
-    QPushButton *menuButton = new QPushButton(fromMap ? GameText::MapText::backToMapButton()
+    QWidget *statusStrip = createRunStatusStrip(topBar);
+
+    QPushButton *menuButton = new QPushButton(fromMap ? viewMapButtonText()
                                                        : GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
 
     topLayout->addWidget(titleLabel);
+    topLayout->addSpacing(14);
+    topLayout->addWidget(statusStrip);
     topLayout->addStretch();
     addSettingsButton(topLayout, topBar);
     topLayout->addWidget(menuButton);
@@ -1041,10 +1467,13 @@ QWidget *MainWindow::createEventCardRewardPage(const RandomEventChoice &choice,
 
     rootLayout->addWidget(topBar);
     rootLayout->addWidget(m_rewardWidget, 1);
+    connectRunStatusDeckButton(page);
+    refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
 
     connect(menuButton, &QPushButton::clicked, this, [this, fromMap]() {
         if (fromMap) {
-            finishMapNode(true);
+            showMapPreviewFromCurrentNode();
         } else {
             m_pages->setCurrentIndex(0);
         }
@@ -1058,10 +1487,10 @@ QWidget *MainWindow::createMapNodePlaceholderPage(const QString &title, const QS
     QWidget *page = createDebugPlaceholderPage(title, body);
     const QList<QPushButton *> buttons = page->findChildren<QPushButton *>(QStringLiteral("MenuButton"));
     for (QPushButton *button : buttons) {
-        button->setText(GameText::MapText::backToMapButton());
+        button->setText(viewMapButtonText());
         button->disconnect();
         connect(button, &QPushButton::clicked, this, [this]() {
-            finishMapNode(false);
+            showMapPreviewFromCurrentNode();
         });
     }
 
@@ -1129,11 +1558,15 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
     QLabel *titleLabel = new QLabel(title, topBar);
     titleLabel->setStyleSheet("color: #f7ead0; font-size: 18px; font-weight: 900;");
 
+    QWidget *statusStrip = createRunStatusStrip(topBar);
+
     QPushButton *menuButton = new QPushButton(GameText::Menu::backToMenuButton(), topBar);
     menuButton->setObjectName("MenuButton");
     menuButton->setCursor(Qt::PointingHandCursor);
 
     topLayout->addWidget(titleLabel);
+    topLayout->addSpacing(14);
+    topLayout->addWidget(statusStrip);
     topLayout->addStretch();
     addSettingsButton(topLayout, topBar);
     topLayout->addWidget(menuButton);
@@ -1162,6 +1595,9 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
     rootLayout->addStretch();
     rootLayout->addWidget(panel, 0, Qt::AlignCenter);
     rootLayout->addStretch();
+    connectRunStatusDeckButton(page);
+    refreshRunStatusStrip(page);
+    startRunStatusRefreshTimer(page);
 
     connect(menuButton, &QPushButton::clicked, this, [this]() {
         m_pages->setCurrentIndex(0);
@@ -1172,12 +1608,38 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
 
 void MainWindow::startNewRunFromMenu()
 {
+    if (saveFileExists()) {
+        QMessageBox confirmBox(this);
+        confirmBox.setWindowTitle(QStringLiteral("放弃上次存档？"));
+        confirmBox.setText(QStringLiteral("检测到上次修读存档。开始新学期会放弃上次进度。"));
+        confirmBox.setInformativeText(QStringLiteral("同一时间最多保存一个存档，是否确认开始新学期？"));
+        QPushButton *discardButton = confirmBox.addButton(QStringLiteral("放弃存档"), QMessageBox::DestructiveRole);
+        QPushButton *cancelButton = confirmBox.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+        confirmBox.setDefaultButton(cancelButton);
+        confirmBox.exec();
+        if (confirmBox.clickedButton() != discardButton) {
+            updateContinueButtonVisibility();
+            return;
+        }
+        deleteSaveFile();
+    }
+
     stopMusic();
     if (m_battlePage) {
         m_pages->removeWidget(m_battlePage);
         m_battlePage->deleteLater();
         m_battlePage = nullptr;
         m_battleWidget = nullptr;
+    }
+    if (m_deathPage) {
+        m_pages->removeWidget(m_deathPage);
+        m_deathPage->deleteLater();
+        m_deathPage = nullptr;
+    }
+    if (m_settlementPage) {
+        m_pages->removeWidget(m_settlementPage);
+        m_settlementPage->deleteLater();
+        m_settlementPage = nullptr;
     }
     m_activeMapNodeType = MapNodeType::None;
     GameState::instance().resetForNewRun();
@@ -1314,6 +1776,67 @@ void MainWindow::showEventCardRewardPage(const RandomEventChoice &choice, bool f
     m_pages->setCurrentWidget(m_rewardPage);
 }
 
+void MainWindow::showDeathPage()
+{
+    if (m_mapPreviewMode) {
+        m_mapPreviewMode = false;
+        m_mapPreviewReturnPage = nullptr;
+        setMapPreviewMode(false);
+    }
+
+    if (m_mapWidget) {
+        m_mapWidget->cancelPendingNode();
+    }
+
+    m_activeMapNodeType = MapNodeType::None;
+    GameState::instance().setCurrentNode(MapNodeType::None);
+    deleteSaveFile();
+    stopMusic();
+
+    if (m_deathPage) {
+        m_pages->removeWidget(m_deathPage);
+        m_deathPage->deleteLater();
+        m_deathPage = nullptr;
+    }
+
+    m_deathPage = createDeathPage();
+    m_pages->addWidget(m_deathPage);
+    m_pages->setCurrentWidget(m_deathPage);
+    updateContinueButtonVisibility();
+}
+
+void MainWindow::showSettlementPage()
+{
+    if (m_mapPreviewMode) {
+        m_mapPreviewMode = false;
+        m_mapPreviewReturnPage = nullptr;
+        setMapPreviewMode(false);
+    }
+
+    if (m_battlePage) {
+        m_pages->removeWidget(m_battlePage);
+        m_battlePage->deleteLater();
+        m_battlePage = nullptr;
+        m_battleWidget = nullptr;
+    }
+
+    m_activeMapNodeType = MapNodeType::None;
+    GameState::instance().setCurrentNode(MapNodeType::None);
+    deleteSaveFile();
+    stopMusic();
+
+    if (m_settlementPage) {
+        m_pages->removeWidget(m_settlementPage);
+        m_settlementPage->deleteLater();
+        m_settlementPage = nullptr;
+    }
+
+    m_settlementPage = createSettlementPage();
+    m_pages->addWidget(m_settlementPage);
+    m_pages->setCurrentWidget(m_settlementPage);
+    updateContinueButtonVisibility();
+}
+
 void MainWindow::showDebugPlaceholderPage(const QString &title, const QString &body)
 {
     if (m_debugPage) {
@@ -1387,17 +1910,25 @@ void MainWindow::openMapNode(MapNodeType nodeType)
         return;
     }
 
+    if (nodeType == MapNodeType::Rest) {
+        if (m_mapNodePage) {
+            m_pages->removeWidget(m_mapNodePage);
+            m_mapNodePage->deleteLater();
+            m_mapNodePage = nullptr;
+        }
+        m_mapNodePage = createRestPage(true);
+        m_pages->addWidget(m_mapNodePage);
+        m_pages->setCurrentWidget(m_mapNodePage);
+        return;
+    }
+
     if (m_mapNodePage) {
         m_pages->removeWidget(m_mapNodePage);
         m_mapNodePage->deleteLater();
         m_mapNodePage = nullptr;
     }
 
-    if (nodeType == MapNodeType::Rest) {
-        m_mapNodePage = createMapNodePlaceholderPage(GameText::DebugText::restTitle(), GameText::DebugText::restBody());
-    } else {
-        m_mapNodePage = createMapNodePlaceholderPage(GameText::DebugText::mapTitle(), GameText::DebugText::mapBody());
-    }
+    m_mapNodePage = createMapNodePlaceholderPage(GameText::DebugText::mapTitle(), GameText::DebugText::mapBody());
 
     m_pages->addWidget(m_mapNodePage);
     m_pages->setCurrentWidget(m_mapNodePage);
@@ -1417,6 +1948,11 @@ void MainWindow::finishMapNode(bool completed)
         m_battlePage->deleteLater();
         m_battlePage = nullptr;
         m_battleWidget = nullptr;
+    }
+
+    if (GameState::instance().isDead()) {
+        showDeathPage();
+        return;
     }
 
     if (completed && m_mapWidget) {
@@ -1571,10 +2107,85 @@ void MainWindow::updateContinueButtonVisibility()
     }
 }
 
+void MainWindow::deleteSaveFile()
+{
+    if (saveFileExists()) {
+        QFile::remove(saveFilePath());
+    }
+    updateContinueButtonVisibility();
+}
+
+void MainWindow::connectRunStatusDeckButton(QWidget *root)
+{
+    if (!root) {
+        return;
+    }
+
+    const QList<QPushButton *> buttons =
+        root->findChildren<QPushButton *>(QString::fromLatin1(RunStatusDeckButton));
+    for (QPushButton *button : buttons) {
+        connect(button, &QPushButton::clicked, this, [this]() {
+            showDeckDialog(QStringLiteral("当前卡组"));
+        });
+    }
+}
+
+void MainWindow::showDeckDialog(const QString &title)
+{
+    const QList<Card> cards = GameState::instance().ownedCards();
+    QStringList lines;
+    for (int i = 0; i < cards.size(); ++i) {
+        const Card card = cards.at(i);
+        lines << QStringLiteral("%1. %2\n费用 %3\n%4")
+                     .arg(i + 1)
+                     .arg(card.displayName())
+                     .arg(card.cost())
+                     .arg(card.description());
+    }
+    if (lines.isEmpty()) {
+        lines << QStringLiteral("当前没有卡牌。");
+    }
+
+    QDialog *dialog = new QDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle(title);
+    dialog->resize(620, 520);
+    dialog->setStyleSheet(
+        "QDialog { background: #151922; }"
+        "QTextEdit {"
+        "  background: #f6ead0;"
+        "  border: 2px solid rgba(80, 52, 32, 150);"
+        "  border-radius: 8px;"
+        "  color: #21160f;"
+        "  font-size: 15px;"
+        "  font-weight: 750;"
+        "  padding: 10px;"
+        "}");
+
+    QTextEdit *textEdit = new QTextEdit(dialog);
+    textEdit->setReadOnly(true);
+    textEdit->setText(lines.join(QStringLiteral("\n\n")));
+
+    QVBoxLayout *layout = new QVBoxLayout(dialog);
+    layout->setContentsMargins(14, 14, 14, 14);
+    layout->addWidget(textEdit);
+    dialog->show();
+}
+
 bool MainWindow::saveRunToDisk()
 {
     if (!GameState::instance().hasRunSeed()) {
         updateContinueButtonVisibility();
+        return false;
+    }
+
+    if (GameState::instance().isDead()) {
+        deleteSaveFile();
+        return false;
+    }
+
+    if (GameState::instance().bossDefeated()) {
+        deleteSaveFile();
         return false;
     }
 
@@ -1631,6 +2242,16 @@ bool MainWindow::loadRunFromDisk()
     if (!GameState::instance().loadFromJson(root.value(QStringLiteral("state")).toObject())) {
         QMessageBox::warning(this, QStringLiteral("Save"), QStringLiteral("The saved run state is incomplete."));
         return false;
+    }
+
+    if (GameState::instance().isDead()) {
+        showDeathPage();
+        return true;
+    }
+
+    if (GameState::instance().bossDefeated()) {
+        showSettlementPage();
+        return true;
     }
 
     if (!m_mapPage) {

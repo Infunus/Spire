@@ -540,17 +540,17 @@ namespace EventLibrary
     inline RandomEventData createScienceBuildingElevatorEvent()
     {
         QStringList storyPages;
-        storyPages << QStringLiteral("理科楼电梯口挤满了人，数字停在一个很不讲道理的楼层。上课铃还没响，但空气里已经有了迟到的味道。")
+        storyPages << QStringLiteral("理教电梯口挤满了人，数字停在一个很不讲道理的楼层。上课铃还没响，但空气里已经有了迟到的味道。")
                    << QStringLiteral("有人冲向楼梯，有人原地等候，还有人掏出咖啡开始和命运谈判。")
                    << QStringLiteral("你看了一眼课表：教室在顶层。");
 
         QList<RandomEventChoice> choices;
         choices << makeChoice(QStringLiteral("爬楼梯冲上去"),
-                              QStringLiteral("你一路爬到顶层，推门时刚好赶上点名。心跳很快，但手里的书包变得更可靠了。"),
+                              QStringLiteral("你一路往上冲，路上还看到一个袋子，大概是同样心急如焚的人留下的吧"),
                               EventEffectType::GainRelicById,
                               0,
                               RelicIds::packedSchoolbag(),
-                              QStringLiteral("获得圣遗物：满载书包。"))
+                              QStringLiteral("获得圣遗物：红色的帆布袋。"))
                 << makeChoice(QStringLiteral("继续等电梯"),
                               QStringLiteral("电梯终于抵达，你被人群平稳地送上楼。时间被消耗掉一点，心情也跟着掉了一些。"),
                               EventEffectType::LoseHp,
@@ -565,7 +565,7 @@ namespace EventLibrary
                               QStringLiteral("获得饮料 抹茶拿铁。"));
 
         return makeEvent(QStringLiteral("science_building_elevator"),
-                         QStringLiteral("理科楼电梯"),
+                         QStringLiteral("理教电梯口"),
                          storyPages,
                          choices);
     }
@@ -617,7 +617,7 @@ namespace EventLibrary
 
         QList<RandomEventChoice> choices;
         choices << makeChoice(QStringLiteral("不回复，看看群里会不会有人领锅"),
-                              QStringLiteral("你继续吃小番茄，打算先观察一下局势。结果一颗小番茄的汁水溅到了手机屏幕上。\n\n你手忙脚乱地擦干手机，才发现擦拭过程中误触了输入框，往群里连发了五十多条“突突突”。群里沉默了两秒，部长回了一句：“看起来你很有激情。”最终，你不得不把这个锅领了下来。"),
+                              QStringLiteral("你继续吃小番茄，打算先观察一下局势。结果一颗小番茄的汁水溅到了手机屏幕上。\n\n你手忙脚乱地擦干手机，才发现擦拭过程中误触了输入框，往群里连发了五十多条“突突突”。群里陷入了可怕的沉默。最终，你不得不把这个锅领了下来。"),
                               EventEffectType::LoseHp,
                               GameBalance::Events::studentAffairsWaitLoseHp(),
                               QString(),

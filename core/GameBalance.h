@@ -148,7 +148,7 @@ inline int cardRemovalPrice() { return 75; }     // 商店删牌服务价格。
 
 namespace Map
 {
-inline int layerCount() { return 10; }            // 地图总层数，最后一层是 Boss。
+inline int layerCount() { return 19; }            // 地图总层数，最后一层是 Boss。
 inline int normalRoomsPerLayer() { return 3; }    // 非 Boss 层每层节点数量。
 inline int bossRoomIndex() { return 1; }          // Boss 和强制休息节点所在的中间列。
 inline int randomRollMax() { return 100; }        // 地图节点随机数上限。
@@ -156,6 +156,12 @@ inline int battleThreshold() { return 45; }       // 随机值小于该数时生
 inline int eventThreshold() { return 65; }        // 随机值小于该数时生成事件。
 inline int shopThreshold() { return 78; }         // 随机值小于该数时生成商店。
 inline int rewardThreshold() { return 90; }       // 随机值小于该数时生成奖励。
+}
+
+namespace Rest
+{
+inline int sleepHeal() { return 10; }
+inline int upgradeCount() { return 3; }
 }
 
 namespace Relics

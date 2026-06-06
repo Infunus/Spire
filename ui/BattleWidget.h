@@ -54,6 +54,8 @@ private:
     QWidget *createArenaPanel();
     QWidget *createControlStrip();
     void setupInitialDemoText();
+    void applyNormalMessageStyle();
+    void applyBattleEndMessageStyle();
     void startRun();
     void startBattle();
     void beginPlayerTurn();
@@ -119,7 +121,7 @@ private:
     QPushButton *m_exhaustPileButton;
     QList<QLabel *> m_relicLabels;
     QList<QPushButton *> m_potionButtons;
-    QList<QPushButton *> m_handButtons;
+    QList<QWidget *> m_handButtons;
     QList<EnemyUnitWidget *> m_enemyWidgets;
 
     QList<Card> m_cardLibrary;

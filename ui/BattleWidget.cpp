@@ -9,6 +9,7 @@
 #include <QAbstractAnimation>
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDialog>
 #include <QDir>
 #include <QEvent>
@@ -17,6 +18,7 @@
 #include <QGraphicsOpacityEffect>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QImage>
 #include <QLabel>
 #include <QLayoutItem>
 #include <QMouseEvent>
@@ -160,18 +162,27 @@ QString defaultCardImagePath(const Card &card)
 }
 }
 
-class BattleCardButton : public QPushButton
+class BattleCardButton : public QWidget
 {
 public:
     explicit BattleCardButton(const Card &card, QWidget *parent = nullptr)
-        : QPushButton(parent),
+        : QWidget(parent),
           m_card(card),
           m_artPath(defaultCardImagePath(card)),
+          m_resolvedArtPath(findProjectAssetPath(m_artPath)),
           m_angle(0),
-          m_art(findProjectAssetPath(m_artPath))
+          m_art(m_resolvedArtPath),
+          m_reportedMissingArt(false),
+          m_artLabel(new QLabel(this))
     {
+        setObjectName("BattleCardButton");
         setMouseTracking(true);
-        setText(QString());
+        setAttribute(Qt::WA_StyledBackground, false);
+        setAutoFillBackground(false);
+        m_artLabel->setAlignment(Qt::AlignCenter);
+        m_artLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+        m_artLabel->setStyleSheet("background: transparent; border: 0;");
+        updateArtLabel();
     }
 
     void setPaintAngle(qreal value)
@@ -184,6 +195,12 @@ public:
     }
 
 protected:
+    void resizeEvent(QResizeEvent *event) override
+    {
+        QWidget::resizeEvent(event);
+        updateArtLabel();
+    }
+
     void paintEvent(QPaintEvent *event) override
     {
         Q_UNUSED(event);
@@ -191,9 +208,6 @@ protected:
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setRenderHint(QPainter::SmoothPixmapTransform);
-        painter.translate(rect().center());
-        painter.rotate(m_angle);
-        painter.translate(-rect().center());
 
         const QRectF cardRect = rect().adjusted(4, 4, -4, -4);
         const bool active = isEnabled();
@@ -249,31 +263,30 @@ protected:
                          Qt::AlignCenter,
                          QString::number(m_card.cost()));
 
-        if (m_art.isNull() && !m_artPath.isEmpty()) {
-            m_art.load(findProjectAssetPath(m_artPath));
-        }
-
         const QRectF artRect(cardRect.left() + 13, cardRect.top() + 45, cardRect.width() - 26, cardRect.height() * 0.46);
         QPainterPath artPath;
         artPath.addRoundedRect(artRect, 10, 10);
-        painter.save();
-        painter.setClipPath(artPath);
-        if (!m_art.isNull()) {
-            const QPixmap scaledArt = m_art.scaled(artRect.size().toSize(),
-                                                   Qt::KeepAspectRatioByExpanding,
-                                                   Qt::SmoothTransformation);
-            const QRectF sourceRect((scaledArt.width() - artRect.width()) / 2.0,
-                                    (scaledArt.height() - artRect.height()) / 2.0,
-                                    artRect.width(),
-                                    artRect.height());
-            painter.drawPixmap(artRect, scaledArt, sourceRect);
-        } else {
+        if (m_art.isNull()) {
+            if (!m_reportedMissingArt && !m_artPath.isEmpty()) {
+                qWarning() << "Failed to load card art" << m_card.id() << m_card.displayName()
+                           << "from" << m_artPath << "resolved as" << m_resolvedArtPath;
+                m_reportedMissingArt = true;
+            }
             QLinearGradient fallback(artRect.topLeft(), artRect.bottomRight());
-            fallback.setColorAt(0.0, QColor(238, 218, 150));
-            fallback.setColorAt(1.0, QColor(80, 59, 50));
+            fallback.setColorAt(0.0, QColor(87, 32, 35));
+            fallback.setColorAt(1.0, QColor(31, 22, 24));
             painter.fillPath(artPath, fallback);
+            painter.setPen(QColor(255, 232, 180));
+            QFont missingFont = painter.font();
+            missingFont.setPointSize(8);
+            missingFont.setBold(true);
+            painter.setFont(missingFont);
+            painter.drawText(artRect.adjusted(6, 6, -6, -6),
+                             Qt::AlignCenter | Qt::TextWordWrap,
+                             m_artPath.isEmpty()
+                                 ? QStringLiteral("缺图")
+                                 : QStringLiteral("缺图\n%1").arg(QFileInfo(m_artPath).fileName()));
         }
-        painter.restore();
         painter.setPen(QPen(QColor(91, 55, 37), 3));
         painter.drawPath(artPath);
 
@@ -305,10 +318,61 @@ protected:
     }
 
 private:
+    QRect artLabelRect() const
+    {
+        const QRectF cardRect = rect().adjusted(4, 4, -4, -4);
+        const QRectF artRect(cardRect.left() + 13,
+                             cardRect.top() + 45,
+                             cardRect.width() - 26,
+                             cardRect.height() * 0.46);
+        return artRect.toAlignedRect().adjusted(3, 3, -3, -3);
+    }
+
+    void updateArtLabel()
+    {
+        if (m_art.isNull() && !m_resolvedArtPath.isEmpty()) {
+            m_art.load(m_resolvedArtPath);
+        }
+        if (m_art.isNull() || width() <= 0 || height() <= 0) {
+            m_artLabel->hide();
+            return;
+        }
+
+        const QRect target = artLabelRect();
+        if (target.width() <= 0 || target.height() <= 0) {
+            m_artLabel->hide();
+            return;
+        }
+
+        const QPixmap source = QPixmap::fromImage(m_art);
+        const QPixmap scaled = source.scaled(target.size(),
+                                             Qt::KeepAspectRatioByExpanding,
+                                             Qt::SmoothTransformation);
+        const QRect sourceRect(qMax(0, (scaled.width() - target.width()) / 2),
+                               qMax(0, (scaled.height() - target.height()) / 2),
+                               target.width(),
+                               target.height());
+
+        QPixmap cropped(target.size());
+        cropped.fill(Qt::transparent);
+        QPainter cropPainter(&cropped);
+        cropPainter.setRenderHint(QPainter::SmoothPixmapTransform);
+        cropPainter.drawPixmap(cropped.rect(), scaled, sourceRect);
+        cropPainter.end();
+
+        m_artLabel->setGeometry(target);
+        m_artLabel->setPixmap(cropped);
+        m_artLabel->show();
+        m_artLabel->raise();
+    }
+
     Card m_card;
     QString m_artPath;
+    QString m_resolvedArtPath;
     qreal m_angle;
-    QPixmap m_art;
+    QImage m_art;
+    mutable bool m_reportedMissingArt;
+    QLabel *m_artLabel;
 };
 
 class PlayerPortraitWidget : public QWidget
@@ -894,9 +958,55 @@ QWidget *BattleWidget::createControlStrip()
 
 void BattleWidget::setupInitialDemoText()
 {
+    applyNormalMessageStyle();
     m_titleLabel->setText(GameText::App::title());
     m_tipLabel->setText(GameText::Battle::handTipText());
     refreshUi();
+}
+
+void BattleWidget::applyNormalMessageStyle()
+{
+    m_titleLabel->setStyleSheet(
+        "background: rgba(7, 11, 17, 96);"
+        "border: 0;"
+        "border-radius: 10px;"
+        "color: #f5ead2;"
+        "font-size: 22px;"
+        "font-weight: 900;"
+        "padding: 5px 16px;");
+
+    m_tipLabel->setStyleSheet(
+        "QLabel {"
+        "  background: transparent;"
+        "  border: 0;"
+        "  padding: 8px 12px;"
+        "  color: rgba(255, 244, 215, 180);"
+        "  font-size: 16px;"
+        "  font-weight: 800;"
+        "}");
+}
+
+void BattleWidget::applyBattleEndMessageStyle()
+{
+    m_titleLabel->setStyleSheet(
+        "background: rgba(255, 241, 204, 232);"
+        "border: 2px solid rgba(83, 50, 27, 150);"
+        "border-radius: 10px;"
+        "color: #24160d;"
+        "font-size: 22px;"
+        "font-weight: 900;"
+        "padding: 5px 16px;");
+
+    m_tipLabel->setStyleSheet(
+        "QLabel {"
+        "  background: rgba(255, 241, 204, 226);"
+        "  border: 2px solid rgba(83, 50, 27, 150);"
+        "  border-radius: 12px;"
+        "  padding: 10px 14px;"
+        "  color: #24160d;"
+        "  font-size: 16px;"
+        "  font-weight: 900;"
+        "}");
 }
 
 void BattleWidget::setBossBattle(bool isBossBattle)
@@ -952,6 +1062,7 @@ void BattleWidget::startRun()
 
 void BattleWidget::startBattle()
 {
+    applyNormalMessageStyle();
     m_hand.setDeck(m_cardLibrary);
     m_exhaustPile.clear();
     m_enemies = createEnemiesForBattle();
@@ -1047,7 +1158,7 @@ void BattleWidget::layoutHandButtons(bool animate)
 
     int visibleIndex = 0;
     for (int i = 0; i < count; ++i) {
-        QPushButton *button = m_handButtons.at(i);
+        QWidget *button = m_handButtons.at(i);
         if (!button) {
             continue;
         }
@@ -1143,24 +1254,21 @@ bool BattleWidget::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::MouseMove && m_dragCardIndex == handIndex) {
         QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
         if ((mouseEvent->globalPosition().toPoint() - m_dragStartPos).manhattanLength() >= QApplication::startDragDistance()) {
-            QPushButton *cardButton = qobject_cast<QPushButton *>(cardWidget);
-            if (cardButton && !m_draggingCardEntity) {
-                const QRect globalRect(cardButton->mapToGlobal(QPoint(0, 0)), cardButton->size());
-                cardButton->setParent(this);
-                cardButton->setGeometry(QRect(mapFromGlobal(globalRect.topLeft()), globalRect.size()));
-                if (BattleCardButton *battleCard = dynamic_cast<BattleCardButton *>(cardButton)) {
+            if (!m_draggingCardEntity) {
+                const QRect globalRect(cardWidget->mapToGlobal(QPoint(0, 0)), cardWidget->size());
+                cardWidget->setParent(this);
+                cardWidget->setGeometry(QRect(mapFromGlobal(globalRect.topLeft()), globalRect.size()));
+                if (BattleCardButton *battleCard = dynamic_cast<BattleCardButton *>(cardWidget)) {
                     battleCard->setPaintAngle(0);
                 }
-                cardButton->show();
-                cardButton->raise();
+                cardWidget->show();
+                cardWidget->raise();
                 m_draggingCardEntity = true;
                 layoutHandButtons(true);
             }
-            if (cardButton) {
-                cardButton->move(mapFromGlobal(mouseEvent->globalPosition().toPoint())
-                                 - QPoint(cardButton->width() / 2, cardButton->height() / 2));
-                cardButton->raise();
-            }
+            cardWidget->move(mapFromGlobal(mouseEvent->globalPosition().toPoint())
+                             - QPoint(cardWidget->width() / 2, cardWidget->height() / 2));
+            cardWidget->raise();
             return true;
         }
     }
@@ -1760,8 +1868,8 @@ void BattleWidget::animateCardToPile(int handIndex, PileKind pileKind)
         return;
     }
 
-    QPushButton *sourceButton = m_handButtons.at(handIndex);
-    if (!sourceButton) {
+    QWidget *sourceWidget = m_handButtons.at(handIndex);
+    if (!sourceWidget) {
         return;
     }
 
@@ -1772,13 +1880,13 @@ void BattleWidget::animateCardToPile(int handIndex, PileKind pileKind)
         targetButton = m_exhaustPileButton;
     }
 
-    const QRect sourceRect(mapFromGlobal(sourceButton->mapToGlobal(QPoint(0, 0))), sourceButton->size());
+    const QRect sourceRect(mapFromGlobal(sourceWidget->mapToGlobal(QPoint(0, 0))), sourceWidget->size());
     const QPoint targetCenter = mapFromGlobal(targetButton->mapToGlobal(QPoint(targetButton->width() / 2,
                                                                                targetButton->height() / 2)));
     const QSize flySize(84, 110);
     const QRect targetRect(targetCenter - QPoint(flySize.width() / 2, flySize.height() / 2), flySize);
 
-    QLabel *flyingCard = new QLabel(sourceButton->text(), this);
+    QLabel *flyingCard = new QLabel(m_hand.cardAt(handIndex).buttonText(), this);
     flyingCard->setAlignment(Qt::AlignCenter);
     flyingCard->setWordWrap(true);
     flyingCard->setStyleSheet(
@@ -2060,6 +2168,7 @@ bool BattleWidget::checkBattleEnd()
         applyRelicsAfterBattleWin();
         m_hand.discardHand();
         rebuildHandButtons();
+        applyBattleEndMessageStyle();
 
         if (m_battleNumber >= GameBalance::Battle::bossBattleNumber()) {
             m_runFinished = true;
@@ -2093,6 +2202,7 @@ bool BattleWidget::checkBattleEnd()
         m_runFinished = true;
         m_hand.discardHand();
         rebuildHandButtons();
+        applyBattleEndMessageStyle();
         m_titleLabel->setText(GameText::Battle::battleFailTitle());
         m_tipLabel->setText(GameText::Battle::failTip());
         refreshUi();
