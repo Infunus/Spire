@@ -122,6 +122,9 @@ namespace GameText
         inline QString playerStrengthStatusName() { return QStringLiteral("效率值"); }
         inline QString playerStrengthStatusShort() { return QStringLiteral("效"); }
         inline QString playerStrengthStatusRules() { return QStringLiteral("效率值：你的攻击牌造成的任务量增加"); }
+        inline QString playerVulnerableStatusName() { return QStringLiteral("破防"); }
+        inline QString playerVulnerableStatusShort() { return QStringLiteral("破"); }
+        inline QString playerVulnerableStatusRules() { return QStringLiteral("破防：受到的心情损失提高 50%"); }
         inline QString statusTooltip(const QString &name, int value, const QString &rulesText)
         {
             return QStringLiteral("%1 x%2\n%3").arg(name).arg(value).arg(rulesText);
@@ -287,9 +290,9 @@ namespace GameText
         inline QString weakStatusName() { return QStringLiteral("疲劳"); }
         inline QString weakStatusShort() { return QStringLiteral("疲"); }
         inline QString weakStatusRules() { return QStringLiteral("虚弱：攻击造成的伤害降低"); }
-        inline QString vulnerableStatusName() { return QStringLiteral("破防"); }
-        inline QString vulnerableStatusShort() { return QStringLiteral("破"); }
-        inline QString vulnerableStatusRules() { return QStringLiteral("破防：受到的伤害提高 50%"); }
+        inline QString vulnerableStatusName() { return QStringLiteral("思路突破"); }
+        inline QString vulnerableStatusShort() { return QStringLiteral("突"); }
+        inline QString vulnerableStatusRules() { return QStringLiteral("思路突破：受到的任务量提高 50%"); }
         inline QString strengthStatusName() { return QStringLiteral("压力值"); }
         inline QString strengthStatusShort() { return QStringLiteral("压"); }
         inline QString strengthStatusRules() { return QStringLiteral("后续攻击伤害增加"); }
@@ -324,6 +327,27 @@ namespace GameText
         inline QString projectNobName() { return QStringLiteral("小组汇报"); }
         inline QString projectNobDescription() { return QStringLiteral("“所以我们的主题选什么好呢……？”“谁会做PPT？”“交给AI算了……”“……我不上台讲，别的都好说”“诶？大家怎么都做完了，记得把我名字加上去”……"); }
         inline QString projectNobImage() { return QStringLiteral("resources/enemies/enemy_group_presentation.png"); }
+
+        inline QString morningAlarmName() { return QStringLiteral("早八闹钟"); }
+        inline QString morningAlarmDescription()
+        {
+            return QStringLiteral("血量低，但如果拖着不管，会越响越烦");
+        }
+        inline QString morningAlarmImage() { return QStringLiteral("resources/enemies/enemy_morning_alarm_louse.png"); }
+
+        inline QString clubFlyerName() { return QStringLiteral("论文阅读报告"); }
+        inline QString clubFlyerDescription()
+        {
+            return QStringLiteral("这个英语课任务量怎么这么大？");
+        }
+        inline QString clubFlyerImage() { return QStringLiteral("resources/enemies/enemy_club_flyer_fungus.png"); }
+
+        inline QString teachingSentryName() { return QStringLiteral("85km打卡"); }
+        inline QString teachingSentryDescription()
+        {
+            return QStringLiteral("稳定施压，每周都要为此精疲力尽");
+        }
+        inline QString teachingSentryImage() { return QStringLiteral("resources/enemies/enemy_teaching_sentry.png"); }
 
         inline QString finalExamName() { return QStringLiteral("期末考试"); }
         inline QString finalExamDescription()

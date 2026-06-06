@@ -327,6 +327,48 @@ public:
                      GameBalance::CourseGrade::ddlSlimeScore());
     }
 
+    static Enemy createMorningAlarm()
+    {
+        QList<EnemyAction> actions;
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::MorningAlarm::attackA())
+                << EnemyAction(EnemyActionBuff, GameBalance::Enemies::MorningAlarm::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::MorningAlarm::attackB());
+        return Enemy(GameText::EnemyText::morningAlarmName(),
+                     GameBalance::Enemies::MorningAlarm::maxHp(),
+                     GameText::EnemyText::morningAlarmImage(),
+                     actions,
+                     GameText::EnemyText::morningAlarmDescription(),
+                     GameBalance::CourseGrade::morningAlarmScore());
+    }
+
+    static Enemy createClubFlyer()
+    {
+        QList<EnemyAction> actions;
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::ClubFlyer::attack())
+                << EnemyAction(EnemyActionBuff, GameBalance::Enemies::ClubFlyer::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::ClubFlyer::attack());
+        return Enemy(GameText::EnemyText::clubFlyerName(),
+                     GameBalance::Enemies::ClubFlyer::maxHp(),
+                     GameText::EnemyText::clubFlyerImage(),
+                     actions,
+                     GameText::EnemyText::clubFlyerDescription(),
+                     GameBalance::CourseGrade::clubFlyerScore());
+    }
+
+    static Enemy createTeachingSentry()
+    {
+        QList<EnemyAction> actions;
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::TeachingSentry::attack())
+                << EnemyAction(EnemyActionBlock, GameBalance::Enemies::TeachingSentry::block())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::TeachingSentry::attack());
+        return Enemy(GameText::EnemyText::teachingSentryName(),
+                     GameBalance::Enemies::TeachingSentry::maxHp(),
+                     GameText::EnemyText::teachingSentryImage(),
+                     actions,
+                     GameText::EnemyText::teachingSentryDescription(),
+                     GameBalance::CourseGrade::teachingSentryScore());
+    }
+
     static Enemy createFinalExam()
     {
         QList<EnemyAction> actions;

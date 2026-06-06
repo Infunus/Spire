@@ -26,6 +26,9 @@
 | `resources/enemies/enemy_poj_problem.png` | POJ习题 |
 | `resources/enemies/enemy_easy_course_slime.png` | 水课作业 |
 | `resources/enemies/enemy_group_presentation.png` | 小组汇报 |
+| `resources/enemies/enemy_morning_alarm_louse.png` | 早八闹钟 |
+| `resources/enemies/enemy_club_flyer_fungus.png` | 百团大战传单 |
+| `resources/enemies/enemy_teaching_sentry.png` | 助教查重机 |
 | `resources/enemies/enemy_final_exam.png` | 期末考试 |
 | `resources/cards/genshin_impact_wordmark.png` | 原神卡牌备用 logo 资源 |
 | `resources/events/library_night.png` | 事件：图书馆深夜 |
@@ -37,7 +40,18 @@
 | `resources/events/ideology_pre.png` | 事件：思政课 Pre |
 | `resources/events/gaokao_blessing_video.png` | 事件：高考祝福视频 |
 | `resources/events/wusi_night_run.png` | 事件：五四夜奔 |
+| `resources/events/weishen_plain_lunch.png` | 事件：塑料袋里的数学 |
+| `resources/events/security_booth_night_class.png` | 事件：保安亭夜课 |
+| `resources/events/baijiang_last_ticket.png` | 事件：百讲最后一张票 |
 
 ## 事件图约定
 
 新增事件时，事件 id 使用 `snake_case`，事件图保存为 `resources/events/<event_id>.png`。`EventLibrary::makeEvent()` 会在未手动填写 `imagePath` 时自动使用这个路径。后续新增事件时同步用 image2 生成对应事件图，质量优先，可以按事件气质自由选择写实、玄幻或喜剧化风格。
+
+## 新增事件灵感来源
+
+- 塑料袋里的数学：韦东奕手提馒头和矿泉水接受采访走红的新闻报道。
+- 保安亭夜课：北京大学校友网与央视网关于北大保安读书、考学故事的报道。
+- 百讲最后一张票：北京大学百周年纪念讲堂官网与讲堂历史资料。
+
+新增事件图由 Codex 内置 `image_gen` 生成，原始输出保留在 `C:\Users\Infunus\.codex\generated_images\019e98dc-ef12-7da0-9579-079e32c1dc82`。

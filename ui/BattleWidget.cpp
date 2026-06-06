@@ -69,6 +69,9 @@ QString battleStatusShortText(const QString &name)
     if (name == GameText::Battle::playerStrengthStatusName()) {
         return GameText::Battle::playerStrengthStatusShort();
     }
+    if (name == GameText::Battle::playerVulnerableStatusName()) {
+        return GameText::Battle::playerVulnerableStatusShort();
+    }
     if (name == GameText::EnemyText::weakStatusName()) {
         return GameText::EnemyText::weakStatusShort();
     }
@@ -85,6 +88,9 @@ QString battleStatusRulesText(const QString &name)
 {
     if (name == GameText::Battle::playerStrengthStatusName()) {
         return GameText::Battle::playerStrengthStatusRules();
+    }
+    if (name == GameText::Battle::playerVulnerableStatusName()) {
+        return GameText::Battle::playerVulnerableStatusRules();
     }
     if (name == GameText::EnemyText::weakStatusName()) {
         return GameText::EnemyText::weakStatusRules();
@@ -2139,9 +2145,17 @@ QList<Enemy> BattleWidget::createEnemiesForBattle() const
     } else if (roll == 2) {
         enemies << Enemy::createDdlSlime()
                 << Enemy::createDdlSlime();
-    } else {
+    } else if (roll == 3) {
         enemies << Enemy::createDdlSlime()
                 << Enemy::createProjectNob();
+    } else if (roll == 4) {
+        enemies << Enemy::createMorningAlarm()
+                << Enemy::createMorningAlarm();
+    } else if (roll == 5) {
+        enemies << Enemy::createClubFlyer()
+                << Enemy::createDdlSlime();
+    } else {
+        enemies << Enemy::createTeachingSentry();
     }
     return enemies;
 }

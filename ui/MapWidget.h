@@ -8,6 +8,8 @@
 
 #include <QColor>
 #include <QIcon>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QList>
 #include <QPainter>
 #include <QPixmap>
@@ -173,6 +175,15 @@ public:
         m_nodeHandler = handler;
     }
 
+    void setInteractionEnabled(bool enabled)
+    {
+        if (m_interactionEnabled == enabled) {
+            return;
+        }
+        m_interactionEnabled = enabled;
+        refreshButtons();
+    }
+
     void resetMap()
     {
         for (MapRoomData *room : m_rooms) {
@@ -253,6 +264,107 @@ public:
             room->available = (room->layer == layer && !room->completed);
         }
         refreshButtons();
+    }
+
+    QJsonObject toJson() const
+    {
+        QJsonArray roomArray;
+        for (const MapRoomData *room : m_rooms) {
+            if (!room) {
+                continue;
+            }
+
+            QJsonObject roomObject;
+            roomObject[QStringLiteral("id")] = room->id;
+            roomObject[QStringLiteral("layer")] = room->layer;
+            roomObject[QStringLiteral("index")] = room->index;
+            roomObject[QStringLiteral("type")] = static_cast<int>(room->type);
+            roomObject[QStringLiteral("available")] = room->available;
+            roomObject[QStringLiteral("completed")] = room->completed;
+            roomObject[QStringLiteral("pending")] = room->pending;
+            roomArray.append(roomObject);
+        }
+
+        QJsonObject json;
+        json[QStringLiteral("currentLayer")] = m_currentLayer;
+        json[QStringLiteral("rooms")] = roomArray;
+        return json;
+    }
+
+    bool loadFromJson(const QJsonObject &json)
+    {
+        const QJsonArray roomArray = json.value(QStringLiteral("rooms")).toArray();
+        if (roomArray.isEmpty()) {
+            return false;
+        }
+
+        for (MapRoomData *room : m_rooms) {
+            delete room->button;
+            room->button = nullptr;
+        }
+        qDeleteAll(m_rooms);
+        m_rooms.clear();
+        m_pendingRoom = nullptr;
+        m_currentLayer = qBound(0,
+                                json.value(QStringLiteral("currentLayer")).toInt(0),
+                                m_layerCount);
+
+        const int canvasHeight = mapCanvasHeight();
+        const int canvasWidth = qMax(900, m_scrollArea->viewport()->width());
+        m_canvas->setFixedSize(canvasWidth, canvasHeight);
+
+        for (const QJsonValue &value : roomArray) {
+            const QJsonObject roomObject = value.toObject();
+            const int layer = roomObject.value(QStringLiteral("layer")).toInt(-1);
+            if (layer < 0 || layer >= m_layerCount) {
+                continue;
+            }
+
+            const int typeValue = qBound(static_cast<int>(MapNodeType::Battle),
+                                         roomObject.value(QStringLiteral("type"))
+                                             .toInt(static_cast<int>(MapNodeType::Battle)),
+                                         static_cast<int>(MapNodeType::Boss));
+
+            MapRoomData *room = new MapRoomData;
+            room->id = roomObject.value(QStringLiteral("id")).toInt(m_rooms.size());
+            room->layer = layer;
+            room->index = roomObject.value(QStringLiteral("index")).toInt(0);
+            room->type = static_cast<MapNodeType>(typeValue);
+            room->available = roomObject.value(QStringLiteral("available")).toBool(false);
+            room->completed = roomObject.value(QStringLiteral("completed")).toBool(false);
+            room->pending = roomObject.value(QStringLiteral("pending")).toBool(false);
+
+            const bool bossRoom = room->type == MapNodeType::Boss;
+            QPushButton *button = new QPushButton(nodeName(room->type), m_canvas);
+            button->setCursor(Qt::PointingHandCursor);
+            button->setFixedSize(bossRoom ? QSize(154, 78) : QSize(132, 66));
+            button->setIcon(nodeIcon(room->type));
+            button->setIconSize(bossRoom ? QSize(30, 30) : QSize(22, 22));
+            connect(button, &QPushButton::clicked, this, [this, room]() {
+                activateRoom(room);
+            });
+            room->button = button;
+
+            if (room->pending && !m_pendingRoom) {
+                m_pendingRoom = room;
+            } else if (room->pending) {
+                room->pending = false;
+            }
+
+            m_rooms.append(room);
+        }
+
+        if (m_rooms.isEmpty()) {
+            resetMap();
+            return false;
+        }
+
+        layoutRooms();
+        refreshButtons();
+        QTimer::singleShot(0, this, [this]() {
+            centerCurrentLayer();
+        });
+        return true;
     }
 
 private:
@@ -401,6 +513,10 @@ private:
 
     void activateRoom(MapRoomData *room)
     {
+        if (!m_interactionEnabled) {
+            return;
+        }
+
         if (room && room->pending && m_pendingRoom == room) {
             if (m_nodeHandler) {
                 m_nodeHandler(room->type);
@@ -434,8 +550,9 @@ private:
                 text += QStringLiteral("\n") + GameText::MapText::completedNodeSuffix();
             }
             room->button->setText(text);
-            room->button->setEnabled((room->available && !room->completed && !room->pending)
-                                     || room->pending);
+            room->button->setEnabled(m_interactionEnabled
+                                     && ((room->available && !room->completed && !room->pending)
+                                      || room->pending));
 
             QString style;
             if (room->completed) {
@@ -471,6 +588,7 @@ private:
     QList<MapRoomData *> m_rooms;
     MapRoomData *m_pendingRoom = nullptr;
     std::function<void(MapNodeType)> m_nodeHandler;
+    bool m_interactionEnabled = true;
     int m_currentLayer = 0;
     const int m_layerCount = GameBalance::Map::layerCount();
 };

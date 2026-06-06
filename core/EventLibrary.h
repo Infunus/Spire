@@ -36,17 +36,17 @@
 
 enum class EventEffectType
 {
-    None,            // 暂无真实效果，只显示选择结果。
-    HealHp,          // 回复心情，amount 表示回复量。代码名沿用 Hp，显示时统一叫“心情”。
-    LoseHp,          // 扣除心情，amount 表示扣除量。代码名沿用 Hp，显示时统一叫“心情”。
-    GainCoins,       // 获得 Money，amount 表示获得量。
-    GainUsualScore,       // 获得平时分，amount 表示获得量。
+    None,                    // 暂无真实效果，只显示选择结果。
+    HealHp,                  // 回复心情，amount 表示回复量。代码名沿用 Hp，显示时统一叫“心情”。
+    LoseHp,                  // 扣除心情，amount 表示扣除量。代码名沿用 Hp，显示时统一叫“心情”。
+    GainCoins,               // 调整 Money，amount 为正数时获得，为负数时扣除。
+    GainUsualScore,          // 获得平时分，amount 表示获得量。
     GainNextBattleStrength,  // 下一场战斗开局获得效率值，amount 表示获得量。
     GainNextBattleTurnBlock, // 下一场战斗每回合开始获得抗压值，amount 表示获得量。
     AddCardById,             // 获得卡牌，targetId 填 CardLibrary 里的卡牌 id，amount 可填获得张数。
-    GainRelicById,        // 获得圣遗物，targetId 填 RelicLibrary 里的圣遗物 id。
-    GainPotionById,       // 获得饮料，targetId 填 PotionLibrary 里的饮料 id。
-    GainRandomPotion      // 获得随机饮料，amount 表示获得数量。
+    GainRelicById,           // 获得圣遗物，targetId 填 RelicLibrary 里的圣遗物 id。
+    GainPotionById,          // 获得饮料，targetId 填 PotionLibrary 里的饮料 id。
+    GainRandomPotion         // 获得随机饮料，amount 表示获得数量。
 };
 
 struct RandomEventEffect
@@ -145,9 +145,15 @@ namespace EventLibrary
                        ? QStringLiteral("心情 -%1。").arg(effect.amount)
                        : QString();
         case EventEffectType::GainCoins:
-            return effect.amount > 0
-                       ? QStringLiteral("Money +%1。").arg(effect.amount)
-                       : QString();
+            if (effect.amount > 0)
+            {
+                return QStringLiteral("Money +%1。").arg(effect.amount);
+            }
+            if (effect.amount < 0)
+            {
+                return QStringLiteral("Money -%1。").arg(-effect.amount);
+            }
+            return QString();
         case EventEffectType::GainUsualScore:
             return effect.amount > 0
                        ? QStringLiteral("平时分 +%1。").arg(effect.amount)
@@ -268,7 +274,7 @@ namespace EventLibrary
             return effect.amount > 0;
         case EventEffectType::GainCoins:
             state.addCoins(effect.amount);
-            return effect.amount > 0;
+            return effect.amount != 0;
         case EventEffectType::GainUsualScore:
             state.addUsualScore(effect.amount);
             return effect.amount > 0;
@@ -607,7 +613,7 @@ namespace EventLibrary
         QList<RandomEventEffect> volunteerEffects;
         volunteerEffects << makeEffect(EventEffectType::LoseHp,
                                        GameBalance::Events::studentAffairsVolunteerLoseHp())
-                     << makeEffect(EventEffectType::AddCardById);
+                         << makeEffect(EventEffectType::AddCardById);
 
         QList<RandomEventChoice> choices;
         choices << makeChoice(QStringLiteral("不回复，看看群里会不会有人领锅"),
@@ -619,9 +625,9 @@ namespace EventLibrary
                 << makeChoice(QStringLiteral("不回复，干其他事"),
                               QStringLiteral("你熟练地无视了部长，把手机翻面，去干其他事了。\n\n等你再打开群聊时，这口锅已经被后来的勇者领走。无事发生。"))
                 << makeChoiceWithEffects(QStringLiteral("主动领锅"),
-                                     QStringLiteral("你叹了口气，在群里回了一句“我来吧”。事情确实有点累，但推进过程中你摸清了一套新的工作流程，也算把经验装进了牌组。"),
-                                     volunteerEffects,
-                                     QStringLiteral("失去心情，并获得一张卡牌。"));
+                                         QStringLiteral("你叹了口气，在群里回了一句“我来吧”。事情确实有点累，但推进过程中你摸清了一套新的工作流程，也算把经验装进了牌组。"),
+                                         volunteerEffects,
+                                         QStringLiteral("失去心情，并获得一张卡牌。"));
 
         return makeEvent(QStringLiteral("student_affairs_new_task"),
                          QStringLiteral("小番茄突突突"),
@@ -701,166 +707,288 @@ namespace EventLibrary
                                          friendsEffects,
                                          QStringLiteral("失去心情，并获得平时分。"));
 
-    return makeEvent(QStringLiteral("ideology_pre"),
-                     QStringLiteral("思政课 Pre"),
-                     storyPages,
-                     choices);
-}
-
-inline RandomEventData createGaokaoBlessingVideoEvent()
-{
-    QStringList storyPages;
-    storyPages << QStringLiteral("临近高考，高中老师忽然联系到你，希望你拍一段祝福视频。")
-               << QStringLiteral("消息里写着“给学弟学妹们加加油就好”，语气很温和，却把你一下子拽回了高三。")
-               << QStringLiteral("你看了看自己的期末安排，又看了看老师发来的拍摄要求，开始思考该怎么回复。");
-
-    QList<RandomEventEffect> shootEffects;
-    shootEffects << makeEffect(EventEffectType::LoseHp,
-                               GameBalance::Events::gaokaoBlessingShootLoseHp())
-                 << makeEffect(EventEffectType::AddCardById);
-
-    QList<RandomEventChoice> choices;
-    choices << makeChoiceWithEffects(QStringLiteral("去拍"),
-                                     QStringLiteral("你来到湖边，对着镜头为学弟学妹们录制了祝福视频。\n\n说着说着，你不由得回想起过去。那些曾经觉得过不去的日子，如今已经变成了可以讲给别人听的经验。一时间思绪万千，你有了新的感悟。"),
-                                     shootEffects,
-                                     QStringLiteral("失去心情，并获得一张卡牌。"))
-            << makeChoice(QStringLiteral("婉拒"),
-                          QStringLiteral("他们要高考，我也要期末了啊！你看着还没动工的程设大作业，意识到自己实在分身乏术。\n\n你婉拒了老师的请求，屏蔽掉这次干扰。重新坐回电脑前时，你感觉自己变得更加专注了。"),
-                          EventEffectType::GainNextBattleStrength,
-                          GameBalance::Events::gaokaoBlessingFocusStrength(),
-                          QString(),
-                          QStringLiteral("下回合开始时获得效率值。"))
-            << makeChoice(QStringLiteral("装病"),
-                          QStringLiteral("你假装自己生病了，不得不拒绝拍摄。\n\n本来一切看上去都很顺利，直到同学朋友圈里的一张照片出卖了你。老师没有多说什么，但你已经开始心虚了。"),
-                          EventEffectType::LoseHp,
-                          GameBalance::Events::gaokaoBlessingFakeSickLoseHp(),
-                          QString(),
-                          QStringLiteral("失去心情。"));
-
-    return makeEvent(QStringLiteral("gaokao_blessing_video"),
-                     QStringLiteral("高考祝福视频"),
-                     storyPages,
-                     choices);
-}
-
-inline RandomEventData createClubFairEvent()
-{
-    QStringList storyPages;
-    storyPages << QStringLiteral("又到了百团大战的时候。")
-               << QStringLiteral("社团招新摊位一字排开。你本来只想路过，结果已经有人把报名表递到了你手里。")
-               << QStringLiteral("（以下仅列出部分我们了解的社团）");
-
-    QList<RandomEventEffect> yuanhuoEffects;
-    yuanhuoEffects << makeEffect(EventEffectType::HealHp,
-                                 GameBalance::Events::clubFairYuanhuoHeal())
-                   << makeEffect(EventEffectType::AddCardById,
-                                 GameBalance::Events::clubFairYuanhuoCardCount());
-
-    QList<RandomEventEffect> railwayEffects;
-    railwayEffects << makeEffect(EventEffectType::HealHp,
-                                 GameBalance::Events::clubFairRailwayHeal())
-                   << makeEffect(EventEffectType::AddCardById,
-                                 GameBalance::Events::clubFairRailwayCardCount());
-
-    QList<RandomEventChoice> choices;
-    choices << makeChoiceWithEffects(QStringLiteral("加入元火"),
-                                     QStringLiteral("在元火，你和同好们愉快交流，收获颇丰。"),
-                                     yuanhuoEffects,
-                                     QStringLiteral("回复心情，并获得两张卡牌。"))
-            << makeChoiceWithEffects(QStringLiteral("加入铁协"),
-                                     QStringLiteral("作为光荣的铁协成员，你在耳濡目染下，完整地背下了北京地铁图！\n\n从此以后，你就是朋友们的人形导航。"),
-                                     railwayEffects,
-                                     QStringLiteral("回复心情，并获得一张卡牌。"))
-            << makeChoice(QStringLiteral("加入青天"),
-                          QStringLiteral("你接过社团资料，认真听完了学长学姐的介绍。\n\n他们送给你一本青天观测指南。从此以后，每场战斗开始时，你都会更快进入状态。"),
-                          EventEffectType::GainRelicById,
-                          0,
-                          RelicIds::qingtianObservationGuide(),
-                          QStringLiteral("获得圣遗物 青天观测指南。"))
-            << makeChoice(QStringLiteral("“我再想想”"),
-                          QStringLiteral("你没有加入任何社团，但获得了宝贵的自由时间。"),
-                          EventEffectType::GainNextBattleTurnBlock,
-                          GameBalance::Events::clubFairFreeTimeTurnBlock(),
-                          QString(),
-                          QStringLiteral("下场战斗每回合开始时获得抗压值。"));
-
-    return makeEvent(QStringLiteral("club_fair"),
-                     QStringLiteral("百团大战"),
-                     storyPages,
-                     choices);
-}
-
-inline RandomEventData createWusiNightRunEvent()
-{
-    QStringList storyPages;
-    storyPages << QStringLiteral("今天的五四夜奔似乎比较特殊。")
-               << QStringLiteral("群里有人说，今年不只是长跑，好像还会有特殊奖品。消息越传越热闹，你开始思考要不要去凑这个热闹。");
-
-    QList<RandomEventEffect> runEffects;
-    runEffects << makeEffect(EventEffectType::HealHp,
-                             GameBalance::Events::wusiNightRunHeal())
-               << makeEffect(EventEffectType::GainRelicById,
-                             0,
-                             RelicIds::pkuWatermelon());
-
-    QList<RandomEventEffect> xiGaiEffects;
-    xiGaiEffects << makeEffect(EventEffectType::LoseHp,
-                               GameBalance::Events::wusiNightRunXiGaiLoseHp())
-                 << makeEffect(EventEffectType::GainUsualScore,
-                               GameBalance::Events::wusiNightRunXiGaiUsualScore());
-
-    RandomEventChoice skipChoice = makeChoice(QStringLiteral("不去"),
-                                             QStringLiteral("这种跑步活动还是不去凑热闹了吧……"));
-    skipChoice.showEffectSummary = false;
-
-    QList<RandomEventChoice> choices;
-    choices << makeChoiceWithEffects(QStringLiteral("去参加"),
-                                     QStringLiteral("你参加了五四长跑。大屏播放的动漫让你仿佛回到了童年。\n\n跑完之后，你领到了西瓜。冰凉的甜味在喉咙里散开，味道还不错。"),
-                                     runEffects,
-                                     QStringLiteral("回复心情，并获得圣遗物 北大的瓜。"))
-            << skipChoice
-            << makeChoiceWithEffects(QStringLiteral("你怎么知道我在上习概？"),
-                                     QStringLiteral("我不是不想去，是去不了。\n\n你坐在习概课堂里，听着外面的消息一条条刷过，只能默默把手机扣下，继续记笔记。"),
-                                     xiGaiEffects,
-                                     QStringLiteral("失去心情，并获得平时分。"));
-
-    return makeEvent(QStringLiteral("wusi_night_run"),
-                     QStringLiteral("五四夜奔"),
-                     storyPages,
-                     choices);
-}
-
-inline QList<RandomEventData> allEvents()
-{
-    QList<RandomEventData> events;
-    events << createLibraryNightEvent()
-           << createDormPowerOutageEvent()
-           << createScienceBuildingElevatorEvent()
-           << createWeimingLakeWalkEvent()
-           << createStudentAffairsNewTaskEvent()
-           << createOpenDayEvent()
-           << createIdeologyPreEvent()
-           << createGaokaoBlessingVideoEvent()
-           << createClubFairEvent()
-           << createWusiNightRunEvent();
-
-    // 新事件统一加在这里，例如：
-    // events << createDormPowerOutageEvent();
-    // events << createScienceBuildingElevatorEvent();
-    // events << createWeimingLakeWalkEvent();
-
-    return events;
-}
-
-inline RandomEventData randomEvent()
-{
-    const QList<RandomEventData> events = allEvents();
-    if (events.isEmpty())
-    {
-        return RandomEventData();
+        return makeEvent(QStringLiteral("ideology_pre"),
+                         QStringLiteral("思政课 Pre"),
+                         storyPages,
+                         choices);
     }
-    return events.at(GameRandom::instance().bounded(events.size()));
-}
+
+    inline RandomEventData createGaokaoBlessingVideoEvent()
+    {
+        QStringList storyPages;
+        storyPages << QStringLiteral("临近高考，高中老师忽然联系到你，希望你拍一段祝福视频。")
+                   << QStringLiteral("消息里写着“给学弟学妹们加加油就好”，语气很温和，却把你一下子拽回了高三。")
+                   << QStringLiteral("你看了看自己的期末安排，又看了看老师发来的拍摄要求，开始思考该怎么回复。");
+
+        QList<RandomEventEffect> shootEffects;
+        shootEffects << makeEffect(EventEffectType::LoseHp,
+                                   GameBalance::Events::gaokaoBlessingShootLoseHp())
+                     << makeEffect(EventEffectType::AddCardById);
+
+        QList<RandomEventChoice> choices;
+        choices << makeChoiceWithEffects(QStringLiteral("去拍"),
+                                         QStringLiteral("你来到湖边，对着镜头为学弟学妹们录制了祝福视频。\n\n说着说着，你不由得回想起过去。那些曾经觉得过不去的日子，如今已经变成了可以讲给别人听的经验。一时间思绪万千，你有了新的感悟。"),
+                                         shootEffects,
+                                         QStringLiteral("失去心情，并获得一张卡牌。"))
+                << makeChoice(QStringLiteral("婉拒"),
+                              QStringLiteral("他们要高考，我也要期末了啊！你看着还没动工的程设大作业，意识到自己实在分身乏术。\n\n你婉拒了老师的请求，屏蔽掉这次干扰。重新坐回电脑前时，你感觉自己变得更加专注了。"),
+                              EventEffectType::GainNextBattleStrength,
+                              GameBalance::Events::gaokaoBlessingFocusStrength(),
+                              QString(),
+                              QStringLiteral("下回合开始时获得效率值。"))
+                << makeChoice(QStringLiteral("装病"),
+                              QStringLiteral("你假装自己生病了，不得不拒绝拍摄。\n\n本来一切看上去都很顺利，直到同学朋友圈里的一张照片出卖了你。老师没有多说什么，但你已经开始心虚了。"),
+                              EventEffectType::LoseHp,
+                              GameBalance::Events::gaokaoBlessingFakeSickLoseHp(),
+                              QString(),
+                              QStringLiteral("失去心情。"));
+
+        return makeEvent(QStringLiteral("gaokao_blessing_video"),
+                         QStringLiteral("高考祝福视频"),
+                         storyPages,
+                         choices);
+    }
+
+    inline RandomEventData createClubFairEvent()
+    {
+        QStringList storyPages;
+        storyPages << QStringLiteral("又到了百团大战的时候。")
+                   << QStringLiteral("社团招新摊位一字排开。你本来只想路过，结果已经有人把报名表递到了你手里。")
+                   << QStringLiteral("（以下仅列出部分我们了解的社团）");
+
+        QList<RandomEventEffect> yuanhuoEffects;
+        yuanhuoEffects << makeEffect(EventEffectType::HealHp,
+                                     GameBalance::Events::clubFairYuanhuoHeal())
+                       << makeEffect(EventEffectType::AddCardById,
+                                     GameBalance::Events::clubFairYuanhuoCardCount());
+
+        QList<RandomEventEffect> railwayEffects;
+        railwayEffects << makeEffect(EventEffectType::HealHp,
+                                     GameBalance::Events::clubFairRailwayHeal())
+                       << makeEffect(EventEffectType::AddCardById,
+                                     GameBalance::Events::clubFairRailwayCardCount());
+
+        QList<RandomEventChoice> choices;
+        choices << makeChoiceWithEffects(QStringLiteral("加入元火"),
+                                         QStringLiteral("在元火，你和同好们愉快交流，收获颇丰。"),
+                                         yuanhuoEffects,
+                                         QStringLiteral("回复心情，并获得两张卡牌。"))
+                << makeChoiceWithEffects(QStringLiteral("加入铁协"),
+                                         QStringLiteral("作为光荣的铁协成员，你在耳濡目染下，完整地背下了北京地铁图！\n\n从此以后，你就是朋友们的人形导航。"),
+                                         railwayEffects,
+                                         QStringLiteral("回复心情，并获得一张卡牌。"))
+                << makeChoice(QStringLiteral("加入青天"),
+                              QStringLiteral("你接过社团资料，认真听完了学长学姐的介绍。\n\n他们送给你一本青天观测指南。从此以后，每场战斗开始时，你都会更快进入状态。"),
+                              EventEffectType::GainRelicById,
+                              0,
+                              RelicIds::qingtianObservationGuide(),
+                              QStringLiteral("获得圣遗物 青天观测指南。"))
+                << makeChoice(QStringLiteral("“我再想想”"),
+                              QStringLiteral("你没有加入任何社团，但获得了宝贵的自由时间。"),
+                              EventEffectType::GainNextBattleTurnBlock,
+                              GameBalance::Events::clubFairFreeTimeTurnBlock(),
+                              QString(),
+                              QStringLiteral("下场战斗每回合开始时获得抗压值。"));
+
+        return makeEvent(QStringLiteral("club_fair"),
+                         QStringLiteral("百团大战"),
+                         storyPages,
+                         choices);
+    }
+
+    inline RandomEventData createWusiNightRunEvent()
+    {
+        QStringList storyPages;
+        storyPages << QStringLiteral("今天的五四夜奔似乎比较特殊。")
+                   << QStringLiteral("群里有人说，今年不只是长跑，好像还会有特殊奖品。消息越传越热闹，你开始思考要不要去凑这个热闹。");
+
+        QList<RandomEventEffect> runEffects;
+        runEffects << makeEffect(EventEffectType::HealHp,
+                                 GameBalance::Events::wusiNightRunHeal())
+                   << makeEffect(EventEffectType::GainRelicById,
+                                 0,
+                                 RelicIds::pkuWatermelon());
+
+        QList<RandomEventEffect> xiGaiEffects;
+        xiGaiEffects << makeEffect(EventEffectType::LoseHp,
+                                   GameBalance::Events::wusiNightRunXiGaiLoseHp())
+                     << makeEffect(EventEffectType::GainUsualScore,
+                                   GameBalance::Events::wusiNightRunXiGaiUsualScore());
+
+        RandomEventChoice skipChoice = makeChoice(QStringLiteral("不去"),
+                                                  QStringLiteral("这种跑步活动还是不去凑热闹了吧……"));
+        skipChoice.showEffectSummary = false;
+
+        QList<RandomEventChoice> choices;
+        choices << makeChoiceWithEffects(QStringLiteral("去参加"),
+                                         QStringLiteral("你参加了五四长跑。大屏播放的动漫让你仿佛回到了童年。\n\n跑完之后，你领到了西瓜。冰凉的甜味在喉咙里散开，味道还不错。"),
+                                         runEffects,
+                                         QStringLiteral("回复心情，并获得圣遗物 北大的瓜。"))
+                << skipChoice
+                << makeChoiceWithEffects(QStringLiteral("你怎么知道我在上习概？"),
+                                         QStringLiteral("我不是不想去，是去不了。\n\n你坐在习概课堂里，听着外面的消息一条条刷过，只能默默把手机扣下，继续记笔记。"),
+                                         xiGaiEffects,
+                                         QStringLiteral("失去心情，并获得平时分。"));
+
+        return makeEvent(QStringLiteral("wusi_night_run"),
+                         QStringLiteral("五四夜奔"),
+                         storyPages,
+                         choices);
+    }
+
+    inline RandomEventData createWeishenPlainLunchEvent()
+    {
+        QStringList storyPages;
+        storyPages << QStringLiteral("午饭时间，你刷到一段关于“韦神”的旧采访。镜头里没有豪华装备，只有矿泉水、馒头和一种近乎离谱的专注。")
+                   << QStringLiteral("评论区里有人感叹天赋，有人转发锦鲤，也有人认真讨论：如果把外卖钱省下来买习题集，会不会变强。")
+                   << QStringLiteral("你看着自己桌上的半份作业和还没点开的外卖软件，忽然觉得午饭也变成了一道选择题。");
+
+        QList<RandomEventEffect> plainLunchEffects;
+        plainLunchEffects << makeEffect(EventEffectType::LoseHp,
+                                        GameBalance::Events::weishenPlainLunchLoseHp())
+                          << makeEffect(EventEffectType::GainNextBattleStrength,
+                                        GameBalance::Events::weishenPlainLunchStrength());
+
+        QList<RandomEventChoice> choices;
+        choices << makeChoiceWithEffects(QStringLiteral("试试朴素午餐法"),
+                                         QStringLiteral("你买了矿泉水和馒头，坐回桌前硬啃题目。味道很素，过程也很硬，但注意力居然真的被压缩到了一条窄窄的直线上。\n\n尽管你还是会想着其他美食。"),
+                                         plainLunchEffects,
+                                         QStringLiteral("失去心情，并在下一场战斗开局获得效率值。"))
+                << makeChoice(QStringLiteral("先写完作业再说"),
+                              QStringLiteral("你没有模仿午餐，而是模仿那种“先把手上的题做完”的气势。\n\n半小时后，你在草稿纸角落写下一个终于通顺的解法，忽然有了“我觉得我会了”的错觉。"),
+                              EventEffectType::AddCardById,
+                              0,
+                              CardIds::pommel(),
+                              QStringLiteral("获得卡牌：我觉得我会了。"))
+                << makeChoice(QStringLiteral("尊重故事，然后去吃饭"),
+                              QStringLiteral("你向这份朴素的专注表达敬意，然后诚实地走向食堂。\n\n吃饱之后，你发现自己又能重新面对作业了。"),
+                              EventEffectType::HealHp,
+                              GameBalance::Events::weishenPlainLunchHeal(),
+                              QString(),
+                              QStringLiteral("回复心情。"));
+
+        return makeEvent(QStringLiteral("weishen_plain_lunch"),
+                         QStringLiteral("馒头、矿泉水与数学"),
+                         storyPages,
+                         choices);
+    }
+
+    inline RandomEventData createSecurityBoothNightClassEvent()
+    {
+        QStringList storyPages;
+        storyPages << QStringLiteral("晚归时，楼下的楼长室还亮着。你本来只想低头刷脸，却看见玻璃窗后摊着一本被翻旧的书。")
+                   << QStringLiteral("有人说，北大的工作人员里曾经走出过许多继续读书的人。这个故事在夜色里显得很安静，却比大多数鸡汤都更扎实。")
+                   << QStringLiteral("你看着镜头里的自己，突然不太想把今晚随便糊弄过去。");
+
+        QList<RandomEventEffect> talkEffects;
+        talkEffects << makeEffect(EventEffectType::HealHp,
+                                  GameBalance::Events::securityBoothTalkHeal())
+                    << makeEffect(EventEffectType::GainUsualScore,
+                                  GameBalance::Events::securityBoothTalkUsualScore());
+
+        QList<RandomEventEffect> studyEffects;
+        studyEffects << makeEffect(EventEffectType::LoseHp,
+                                   GameBalance::Events::securityBoothStudyLoseHp())
+                     << makeEffect(EventEffectType::GainUsualScore,
+                                   GameBalance::Events::securityBoothStudyUsualScore());
+
+        QList<RandomEventChoice> choices;
+        choices << makeChoiceWithEffects(QStringLiteral("停下聊几句"),
+                                         QStringLiteral("你问起那本书，对方笑着说只是每天多看几页。没有豪言壮语，也没有背景音乐，只有一盏灯和一点点坚持。\n\n你带着这份轻微的震动离开，心情和分数都被往上托了一点。"),
+                                         talkEffects,
+                                         QStringLiteral("回复心情，并获得平时分。"))
+                << makeChoiceWithEffects(QStringLiteral("回宿舍继续学习"),
+                                         QStringLiteral("受到鼓舞之后，你回去继续努力学习。\n\n你感到自己颇有收获。"),
+                                         studyEffects,
+                                         QStringLiteral("失去心情，并获得平时分。"))
+                << makeChoice(QStringLiteral("今晚还是先休息吧……"),
+                              QStringLiteral("你没有立刻开始学习，但把这个故事收进了心里。\n\n至少今晚先好好休息一下吧。"),
+                              EventEffectType::HealHp,
+                              GameBalance::Events::securityBoothRestHeal(),
+                              QString(),
+                              QStringLiteral("回复心情。"));
+
+        return makeEvent(QStringLiteral("security_booth_night_class"),
+                         QStringLiteral("夜课"),
+                         storyPages,
+                         choices);
+    }
+
+    inline RandomEventData createBaijiangLastTicketEvent()
+    {
+        QStringList storyPages;
+        storyPages << QStringLiteral("百讲今晚有一场演出。已开票，票务系统就像被全校同时点开一样，开始缓慢地转圈。")
+                   << QStringLiteral("看着那个一直在转的圈，心里升起一种熟悉的竞技感。期末、作业和文化生活在同一个浏览器窗口里狭路相逢。")
+                   << QStringLiteral("距离开票还有三分钟，你的鼠标已经悬在刷新按钮上。");
+
+        QList<RandomEventEffect> ticketEffects;
+        ticketEffects << makeEffect(EventEffectType::LoseHp,
+                                    GameBalance::Events::baijiangTicketLoseHp())
+                      << makeEffect(EventEffectType::GainCoins,
+                                    -GameBalance::Events::baijiangTicketCost());
+
+        QList<RandomEventEffect> treeholeEffects;
+        treeholeEffects << makeEffect(EventEffectType::HealHp,
+                                      GameBalance::Events::baijiangTreeholeHeal())
+                        << makeEffect(EventEffectType::GainCoins,
+                                      -GameBalance::Events::baijiangTreeholeCost());
+
+        QList<RandomEventChoice> choices;
+        choices << makeChoiceWithEffects(QStringLiteral("准点蹲票"),
+                                         QStringLiteral("你在整点按下刷新。页面卡住、恢复、又卡住，最后居然真的跳出了一张可购买的票。\n\n抢票过程耗掉了一些心情，票钱也真实地从余额里消失了，但你至少拿到了座位。"),
+                                         ticketEffects,
+                                         QStringLiteral("失去心情，并失去 Money。"))
+                << makeChoiceWithEffects(QStringLiteral("上树洞蹲守"),
+                                         QStringLiteral("你没抢到票，只好上树洞等别人出票。\n\n虽然略贵，但至少最后你成功买到了票。"),
+                                         treeholeEffects,
+                                         QStringLiteral("回复心情，并失去余额。"))
+                << makeChoice(QStringLiteral("把夜晚还给作业"),
+                              QStringLiteral("你关闭票务页面，把这份竞争欲转移到作业上。\n\n没有掌声，没有舞台，但进度条往前走了一截。下一场战斗开始时，你会更快进入状态。"),
+                              EventEffectType::GainNextBattleStrength,
+                              GameBalance::Events::baijiangFocusStrength(),
+                              QString(),
+                              QStringLiteral("下回合开始时获得效率值。"));
+
+        return makeEvent(QStringLiteral("baijiang_last_ticket"),
+                         QStringLiteral("百讲最后一张票"),
+                         storyPages,
+                         choices);
+    }
+
+    inline QList<RandomEventData> allEvents()
+    {
+        QList<RandomEventData> events;
+        events << createLibraryNightEvent()
+               << createDormPowerOutageEvent()
+               << createScienceBuildingElevatorEvent()
+               << createWeimingLakeWalkEvent()
+               << createStudentAffairsNewTaskEvent()
+               << createOpenDayEvent()
+               << createIdeologyPreEvent()
+               << createGaokaoBlessingVideoEvent()
+               << createClubFairEvent()
+               << createWusiNightRunEvent()
+               << createWeishenPlainLunchEvent()
+               << createSecurityBoothNightClassEvent()
+               << createBaijiangLastTicketEvent();
+
+        // 新事件统一加在这里，例如：
+        // events << createDormPowerOutageEvent();
+        // events << createScienceBuildingElevatorEvent();
+        // events << createWeimingLakeWalkEvent();
+
+        return events;
+    }
+
+    inline RandomEventData randomEvent()
+    {
+        const QList<RandomEventData> events = allEvents();
+        if (events.isEmpty())
+        {
+            return RandomEventData();
+        }
+        return events.at(GameRandom::instance().bounded(events.size()));
+    }
 }
 
 #endif // EVENTLIBRARY_H
