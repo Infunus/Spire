@@ -731,7 +731,7 @@ namespace EventLibrary
                                          shootEffects,
                                          QStringLiteral("失去心情，并获得一张卡牌。"))
                 << makeChoice(QStringLiteral("婉拒"),
-                              QStringLiteral("他们要高考，我也要期末了啊！你看着还没动工的程设大作业，意识到自己实在分身乏术。\n\n你婉拒了老师的请求，屏蔽掉这次干扰。重新坐回电脑前时，你感觉自己变得更加专注了。"),
+                              QStringLiteral("他们要高考，我也要期末了啊！你看着自己的程设大作业，意识到自己实在分身乏术。\n\n你婉拒了老师的请求，屏蔽掉这次干扰。重新坐回电脑前时，你感觉自己变得更加专注了。"),
                               EventEffectType::GainNextBattleStrength,
                               GameBalance::Events::gaokaoBlessingFocusStrength(),
                               QString(),
