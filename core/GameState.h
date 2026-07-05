@@ -49,7 +49,6 @@ public:
         m_finalExamScore = 0;
         m_nextBattleStartStrength = 0;
         m_nextBattleTurnBlock = 0;
-        m_credits = 0;
         m_coins = GameBalance::Player::startCoins();
         m_currentFloor = 0;
         m_currentNodeType = MapNodeType::None;
@@ -77,7 +76,6 @@ public:
                       (m_gradeScore + m_finalExamScore) / 2,
                       GameBalance::CourseGrade::finalTotalScoreMax());
     }
-    int credits() const { return m_credits; }
     int coins() const { return m_coins; }
     quint32 runSeed() const { return m_runSeed; }
     bool hasRunSeed() const { return m_hasRunSeed; }
@@ -167,11 +165,6 @@ public:
         const int amount = m_nextBattleTurnBlock;
         m_nextBattleTurnBlock = 0;
         return amount;
-    }
-
-    void addCredits(int amount)
-    {
-        m_credits = qMax(0, m_credits + amount);
     }
 
     void addCoins(int amount)
@@ -316,12 +309,10 @@ public:
     }
 
     void recordEnemyDefeated(int usualScoreReward = GameBalance::Rewards::battleGradeScore(),
-                             int creditReward = GameBalance::Rewards::battleCredits(),
                              int defeatedEnemyCount = 1)
     {
         m_defeatedEnemies += qMax(1, defeatedEnemyCount);
         addUsualScore(usualScoreReward);
-        addCredits(creditReward);
         addCoins(GameBalance::Rewards::battleCoins());
     }
 
@@ -330,36 +321,16 @@ public:
         ++m_eventsFinished;
     }
 
-    void recordBossDefeated(int finalExamScore = GameBalance::CourseGrade::finalExamStartScore(),
-                            int creditReward = GameBalance::Rewards::bossCredits())
+    void recordBossDefeated(int finalExamScore = GameBalance::CourseGrade::finalExamStartScore())
     {
         m_bossDefeated = true;
         setFinalExamScore(finalExamScore);
-        addCredits(creditReward);
         addCoins(GameBalance::Rewards::bossCoins());
     }
 
     double estimatedGpa() const
     {
-        if (m_gradeScore >= GameBalance::Gpa::gradeAThreshold()) {
-            return GameBalance::Gpa::gradeAGpa();
-        }
-        if (m_gradeScore >= GameBalance::Gpa::gradeAMinusThreshold()) {
-            return GameBalance::Gpa::gradeAMinusGpa();
-        }
-        if (m_gradeScore >= GameBalance::Gpa::gradeBPlusThreshold()) {
-            return GameBalance::Gpa::gradeBPlusGpa();
-        }
-        if (m_gradeScore >= GameBalance::Gpa::gradeBThreshold()) {
-            return GameBalance::Gpa::gradeBGpa();
-        }
-        if (m_gradeScore >= GameBalance::Gpa::gradeBMinusThreshold()) {
-            return GameBalance::Gpa::gradeBMinusGpa();
-        }
-        if (m_gradeScore >= GameBalance::Gpa::passThreshold()) {
-            return GameBalance::Gpa::passGpa();
-        }
-        return GameBalance::Gpa::failGpa();
+        return GameBalance::CourseGrade::gpaForTotalScore(totalScore());
     }
 
     QJsonObject toJson() const
@@ -397,7 +368,6 @@ public:
         json[QStringLiteral("finalExamScore")] = m_finalExamScore;
         json[QStringLiteral("nextBattleStartStrength")] = m_nextBattleStartStrength;
         json[QStringLiteral("nextBattleTurnBlock")] = m_nextBattleTurnBlock;
-        json[QStringLiteral("credits")] = m_credits;
         json[QStringLiteral("coins")] = m_coins;
         json[QStringLiteral("currentFloor")] = m_currentFloor;
         json[QStringLiteral("currentNodeType")] = static_cast<int>(m_currentNodeType);
@@ -451,7 +421,6 @@ public:
                                   GameBalance::CourseGrade::finalExamScoreMax());
         m_nextBattleStartStrength = qMax(0, json.value(QStringLiteral("nextBattleStartStrength")).toInt(0));
         m_nextBattleTurnBlock = qMax(0, json.value(QStringLiteral("nextBattleTurnBlock")).toInt(0));
-        m_credits = qMax(0, json.value(QStringLiteral("credits")).toInt(0));
         m_coins = qMax(0, json.value(QStringLiteral("coins")).toInt(GameBalance::Player::startCoins()));
         m_currentFloor = qMax(0, json.value(QStringLiteral("currentFloor")).toInt(0));
         const int nodeType = qBound(0,
@@ -500,7 +469,6 @@ private:
           m_finalExamScore(0),
           m_nextBattleStartStrength(0),
           m_nextBattleTurnBlock(0),
-          m_credits(0),
           m_coins(GameBalance::Player::startCoins()),
           m_runSeed(0),
           m_hasRunSeed(false),
@@ -525,7 +493,6 @@ private:
     int m_finalExamScore;
     int m_nextBattleStartStrength;
     int m_nextBattleTurnBlock;
-    int m_credits;
     int m_coins;
     quint32 m_runSeed;
     bool m_hasRunSeed;

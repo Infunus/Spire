@@ -40,7 +40,7 @@ namespace GameText
         inline QString title() { return QStringLiteral("卷王博雅塔"); }
     }
 
-    // 主菜单和开发调试入口。
+    // 主菜单。
     namespace Menu
     {
         inline QString schoolLabel() { return QStringLiteral("在卡牌与肉鸽中体验燕园生活"); }
@@ -51,14 +51,6 @@ namespace GameText
         inline QString quitButton() { return QStringLiteral("退出游戏"); }
         inline QString backToMenuButton() { return QStringLiteral("主界面"); }
 
-        inline QString debugTitle() { return QStringLiteral("开发调试入口"); }
-        inline QString debugBattleButton() { return QStringLiteral("普通战斗"); }
-        inline QString debugBossButton() { return QStringLiteral("Boss 战"); }
-        inline QString debugEventButton() { return QStringLiteral("随机事件"); }
-        inline QString debugMapButton() { return QStringLiteral("地图节点"); }
-        inline QString debugRewardButton() { return QStringLiteral("卡牌奖励"); }
-        inline QString debugShopButton() { return QStringLiteral("商店"); }
-        inline QString debugRestButton() { return QStringLiteral("休息点"); }
     }
 
     // 战斗界面的固定 UI 文案。
@@ -381,7 +373,7 @@ namespace GameText
         }
         inline QString previewChoiceA() { return QStringLiteral("继续自习，获得一张学习牌"); }
         inline QString previewChoiceB() { return QStringLiteral("回宿舍休息，回复少量心情"); }
-        inline QString previewChoiceC() { return QStringLiteral("去便利店补给，获得 Money"); }
+        inline QString previewChoiceC() { return QStringLiteral("去便利店补给，获得余额"); }
     }
 
     // 圣遗物文本。数值来自 GameBalance::Relics。
@@ -569,19 +561,19 @@ namespace GameText
 
         inline QString rewardWithPotion(int coins, const QString &potionName)
         {
-            return QStringLiteral("获得 %1 Money，并得到一瓶 %2。选择一张卡加入牌组")
+            return QStringLiteral("获得 %1 余额，并得到一瓶 %2。选择一张卡加入牌组")
                 .arg(coins)
                 .arg(potionName);
         }
         inline QString rewardWithPotion()
         {
-            return QStringLiteral("获得 %1 Money，并得到一瓶 抹茶拿铁。选择一张卡加入牌组")
+            return QStringLiteral("获得 %1 余额，并得到一瓶抹茶拿铁。选择一张卡加入牌组")
                 .arg(GameBalance::Rewards::rewardScreenCoins());
         }
 
         inline QString rewardPotionFull(int coins)
         {
-            return QStringLiteral("获得 %1 Money。饮料栏已满，无法获得新的饮料。选择一张卡加入牌组")
+            return QStringLiteral("获得 %1 余额。饮料栏已满，无法获得新的饮料。选择一张卡加入牌组")
                 .arg(coins);
         }
         inline QString rewardPotionFull()

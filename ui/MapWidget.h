@@ -166,7 +166,6 @@ public:
         layout->addWidget(m_scrollArea);
 
         m_canvas->setRooms(&m_rooms);
-        resetMap();
     }
 
 protected:

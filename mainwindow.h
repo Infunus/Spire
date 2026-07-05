@@ -63,15 +63,12 @@ private:
     void showMapPage(bool resetMap = false);
     void showMapPreviewFromCurrentNode();
     void returnFromMapPreview();
-    void showBattlePage();
-    void showBossBattlePage();
     void showEventPreviewPage();
     void showEventPreviewPage(const RandomEventData &eventData);
     void showRewardPage(bool fromMap = false);
     void showEventCardRewardPage(const RandomEventChoice &choice, bool fromMap = false, int rewardIndex = 0);
     void showDeathPage();
     void showSettlementPage();
-    void showDebugPlaceholderPage(const QString &title, const QString &body);
     void openMapNode(MapNodeType nodeType);
     void finishMapNode(bool completed);
     bool canViewMapFromCurrentPage() const;
@@ -104,7 +101,6 @@ private:
     QWidget *m_eventPage;
     QWidget *m_shopPage;
     QWidget *m_rewardPage;
-    QWidget *m_debugPage;
     QWidget *m_mapNodePage;
     QWidget *m_deathPage;
     QWidget *m_settlementPage;

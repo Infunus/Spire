@@ -22,6 +22,7 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
@@ -43,6 +44,8 @@
 #include <QtGlobal>
 #include <QVBoxLayout>
 #include <QWidgetAction>
+
+#include <limits>
 
 namespace
 {
@@ -197,8 +200,7 @@ QString viewMapButtonText()
 
 double settlementGpaForScore(int score)
 {
-    const double delta = 100.0 - score;
-    return 4.0 - 3.0 * delta * delta / 1600.0;
+    return GameBalance::CourseGrade::gpaForTotalScore(score);
 }
 
 QString settlementRatingForScore(int score)
@@ -277,7 +279,6 @@ MainWindow::MainWindow(QWidget *parent)
       m_eventPage(nullptr),
       m_shopPage(nullptr),
       m_rewardPage(nullptr),
-      m_debugPage(nullptr),
       m_mapNodePage(nullptr),
       m_deathPage(nullptr),
       m_settlementPage(nullptr),
@@ -452,66 +453,6 @@ QWidget *MainWindow::createMenuPage()
     buttonLayout->addWidget(settingsButton);
     buttonLayout->addWidget(quitButton);
 
-    QFrame *debugPanel = new QFrame(page);
-    debugPanel->setObjectName("DebugPanel");
-    debugPanel->setFixedWidth(455);
-    debugPanel->setStyleSheet(
-        "QFrame#DebugPanel {"
-        "  background: rgba(8, 11, 18, 145);"
-        "  border: 1px solid rgba(185, 215, 255, 115);"
-        "  border-radius: 8px;"
-        "}"
-        "QLabel {"
-        "  color: rgba(234, 242, 255, 215);"
-        "  font-size: 14px;"
-        "  font-weight: 900;"
-        "}"
-        "QPushButton {"
-        "  background: rgba(40, 54, 78, 150);"
-        "  border: 1px solid rgba(185, 215, 255, 125);"
-        "  border-radius: 6px;"
-        "  color: #eaf2ff;"
-        "  font-size: 14px;"
-        "  font-weight: 800;"
-        "  padding: 8px 10px;"
-        "}"
-        "QPushButton:hover { background: rgba(67, 86, 123, 210); }");
-
-    QVBoxLayout *debugLayout = new QVBoxLayout(debugPanel);
-    debugLayout->setContentsMargins(12, 10, 12, 12);
-    debugLayout->setSpacing(8);
-
-    QLabel *debugTitleLabel = new QLabel(GameText::Menu::debugTitle(), debugPanel);
-    debugLayout->addWidget(debugTitleLabel);
-
-    QGridLayout *debugGrid = new QGridLayout;
-    debugGrid->setHorizontalSpacing(8);
-    debugGrid->setVerticalSpacing(8);
-
-    auto createDebugButton = [debugPanel](const QString &text) {
-        QPushButton *button = new QPushButton(text, debugPanel);
-        button->setCursor(Qt::PointingHandCursor);
-        button->setMinimumHeight(36);
-        return button;
-    };
-
-    QPushButton *debugBattleButton = createDebugButton(GameText::Menu::debugBattleButton());
-    QPushButton *debugBossButton = createDebugButton(GameText::Menu::debugBossButton());
-    QPushButton *debugEventButton = createDebugButton(GameText::Menu::debugEventButton());
-    QPushButton *debugMapButton = createDebugButton(GameText::Menu::debugMapButton());
-    QPushButton *debugRewardButton = createDebugButton(GameText::Menu::debugRewardButton());
-    QPushButton *debugShopButton = createDebugButton(GameText::Menu::debugShopButton());
-    QPushButton *debugRestButton = createDebugButton(GameText::Menu::debugRestButton());
-
-    debugGrid->addWidget(debugBattleButton, 0, 0);
-    debugGrid->addWidget(debugBossButton, 0, 1);
-    debugGrid->addWidget(debugEventButton, 0, 2);
-    debugGrid->addWidget(debugMapButton, 1, 0);
-    debugGrid->addWidget(debugRewardButton, 1, 1);
-    debugGrid->addWidget(debugShopButton, 1, 2);
-    debugGrid->addWidget(debugRestButton, 2, 0);
-    debugLayout->addLayout(debugGrid);
-
     QHBoxLayout *middleLayout = new QHBoxLayout;
     middleLayout->addLayout(titleLayout, 1);
     middleLayout->addStretch(1);
@@ -519,8 +460,6 @@ QWidget *MainWindow::createMenuPage()
     rootLayout->addLayout(middleLayout);
     rootLayout->addStretch(1);
     rootLayout->addLayout(buttonLayout);
-    rootLayout->addSpacing(14);
-    rootLayout->addWidget(debugPanel, 0, Qt::AlignLeft);
 
     connect(startButton, &QPushButton::clicked, this, &MainWindow::startNewRunFromMenu);
     connect(continueButton, &QPushButton::clicked, this, [this]() {
@@ -529,38 +468,6 @@ QWidget *MainWindow::createMenuPage()
         }
     });
     connect(quitButton, &QPushButton::clicked, qApp, &QApplication::quit);
-    connect(debugBattleButton, &QPushButton::clicked, this, &MainWindow::showBattlePage);
-    connect(debugBossButton, &QPushButton::clicked, this, &MainWindow::showBossBattlePage);
-    connect(debugEventButton, &QPushButton::clicked, this, [this]() {
-        showEventPreviewPage();
-    });
-    connect(debugMapButton, &QPushButton::clicked, this, [this]() {
-        showMapPage(false);
-    });
-    connect(debugRewardButton, &QPushButton::clicked, this, [this]() {
-        showRewardPage(false);
-    });
-    connect(debugShopButton, &QPushButton::clicked, this, [this]() {
-        if (m_shopPage) {
-            m_pages->removeWidget(m_shopPage);
-            m_shopPage->deleteLater();
-            m_shopPage = nullptr;
-            m_shopWidget = nullptr;
-        }
-        m_shopPage = createShopPage(false);
-        m_pages->addWidget(m_shopPage);
-        m_pages->setCurrentWidget(m_shopPage);
-    });
-    connect(debugRestButton, &QPushButton::clicked, this, [this]() {
-        if (m_debugPage) {
-            m_pages->removeWidget(m_debugPage);
-            m_debugPage->deleteLater();
-            m_debugPage = nullptr;
-        }
-        m_debugPage = createRestPage(false);
-        m_pages->addWidget(m_debugPage);
-        m_pages->setCurrentWidget(m_debugPage);
-    });
 
     updateContinueButtonVisibility();
     return page;
@@ -655,10 +562,12 @@ void MainWindow::populateSettingsMenu(QMenu *menu)
         setBgmPaused(!m_bgmPaused);
     });
 
-    QAction *mainMenuAction = menu->addAction(QStringLiteral("返回主界面"));
-    connect(mainMenuAction, &QAction::triggered, this, [this]() {
-        returnToMainMenuFromSettings();
-    });
+    if (m_pages && m_pages->currentIndex() != 0) {
+        QAction *mainMenuAction = menu->addAction(QStringLiteral("返回主界面"));
+        connect(mainMenuAction, &QAction::triggered, this, [this]() {
+            returnToMainMenuFromSettings();
+        });
+    }
 
     const bool runContext =
         m_pages
@@ -1608,7 +1517,8 @@ QWidget *MainWindow::createDebugPlaceholderPage(const QString &title, const QStr
 
 void MainWindow::startNewRunFromMenu()
 {
-    if (saveFileExists()) {
+    const bool discardExistingSave = saveFileExists();
+    if (discardExistingSave) {
         QMessageBox confirmBox(this);
         confirmBox.setWindowTitle(QStringLiteral("放弃上次存档？"));
         confirmBox.setText(QStringLiteral("检测到上次修读存档。开始新学期会放弃上次进度。"));
@@ -1621,6 +1531,42 @@ void MainWindow::startNewRunFromMenu()
             updateContinueButtonVisibility();
             return;
         }
+    }
+
+    quint32 customSeed = 0;
+    while (true) {
+        bool accepted = false;
+        const QString seedText =
+            QInputDialog::getText(this,
+                                  QStringLiteral("新学期种子"),
+                                  QStringLiteral("输入 1–4294967295 的整数种子；留空则随机生成："),
+                                  QLineEdit::Normal,
+                                  QString(),
+                                  &accepted)
+                .trimmed();
+        if (!accepted) {
+            updateContinueButtonVisibility();
+            return;
+        }
+        if (seedText.isEmpty()) {
+            break;
+        }
+
+        bool validNumber = false;
+        const qulonglong enteredSeed = seedText.toULongLong(&validNumber, 10);
+        if (validNumber
+            && enteredSeed >= 1
+            && enteredSeed <= std::numeric_limits<quint32>::max()) {
+            customSeed = static_cast<quint32>(enteredSeed);
+            break;
+        }
+
+        QMessageBox::warning(this,
+                             QStringLiteral("种子格式错误"),
+                             QStringLiteral("请输入 1–4294967295 之间的整数，或留空使用随机种子。"));
+    }
+
+    if (discardExistingSave) {
         deleteSaveFile();
     }
 
@@ -1642,7 +1588,11 @@ void MainWindow::startNewRunFromMenu()
         m_settlementPage = nullptr;
     }
     m_activeMapNodeType = MapNodeType::None;
-    GameState::instance().resetForNewRun();
+    if (customSeed == 0) {
+        GameState::instance().resetForNewRun();
+    } else {
+        GameState::instance().resetForNewRunWithSeed(customSeed);
+    }
     showMapPage(true);
     saveRunToDisk();
 }
@@ -1697,36 +1647,6 @@ void MainWindow::returnFromMapPreview()
     if (returnPage && m_pages->indexOf(returnPage) >= 0) {
         m_pages->setCurrentWidget(returnPage);
     }
-}
-
-void MainWindow::showBattlePage()
-{
-    stopMusic();
-    if (m_battlePage) {
-        m_pages->removeWidget(m_battlePage);
-        m_battlePage->deleteLater();
-        m_battlePage = nullptr;
-        m_battleWidget = nullptr;
-    }
-
-    m_battlePage = createBattlePage(false, false);
-    m_pages->addWidget(m_battlePage);
-    m_pages->setCurrentWidget(m_battlePage);
-}
-
-void MainWindow::showBossBattlePage()
-{
-    stopMusic();
-    if (m_battlePage) {
-        m_pages->removeWidget(m_battlePage);
-        m_battlePage->deleteLater();
-        m_battlePage = nullptr;
-        m_battleWidget = nullptr;
-    }
-
-    m_battlePage = createBattlePage(true, false);
-    m_pages->addWidget(m_battlePage);
-    m_pages->setCurrentWidget(m_battlePage);
 }
 
 void MainWindow::showEventPreviewPage()
@@ -1837,19 +1757,6 @@ void MainWindow::showSettlementPage()
     updateContinueButtonVisibility();
 }
 
-void MainWindow::showDebugPlaceholderPage(const QString &title, const QString &body)
-{
-    if (m_debugPage) {
-        m_pages->removeWidget(m_debugPage);
-        m_debugPage->deleteLater();
-        m_debugPage = nullptr;
-    }
-
-    m_debugPage = createDebugPlaceholderPage(title, body);
-    m_pages->addWidget(m_debugPage);
-    m_pages->setCurrentWidget(m_debugPage);
-}
-
 void MainWindow::openMapNode(MapNodeType nodeType)
 {
     const bool resumeExistingBattle =
@@ -1922,16 +1829,12 @@ void MainWindow::openMapNode(MapNodeType nodeType)
         return;
     }
 
-    if (m_mapNodePage) {
-        m_pages->removeWidget(m_mapNodePage);
-        m_mapNodePage->deleteLater();
-        m_mapNodePage = nullptr;
+    m_activeMapNodeType = MapNodeType::None;
+    GameState::instance().setCurrentNode(MapNodeType::None);
+    if (m_mapWidget) {
+        m_mapWidget->cancelPendingNode();
     }
-
-    m_mapNodePage = createMapNodePlaceholderPage(GameText::DebugText::mapTitle(), GameText::DebugText::mapBody());
-
-    m_pages->addWidget(m_mapNodePage);
-    m_pages->setCurrentWidget(m_mapNodePage);
+    showMapPage(false);
 }
 
 void MainWindow::finishMapNode(bool completed)
@@ -2097,7 +2000,26 @@ QString MainWindow::saveFilePath() const
 
 bool MainWindow::saveFileExists() const
 {
-    return QFileInfo(saveFilePath()).isFile();
+    QFile file(saveFilePath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        return false;
+    }
+
+    const QJsonObject root = document.object();
+    if (root.value(QStringLiteral("version")).toInt(0) != 1) {
+        return false;
+    }
+
+    const QJsonObject state = root.value(QStringLiteral("state")).toObject();
+    const QJsonObject map = root.value(QStringLiteral("map")).toObject();
+    return !state.isEmpty()
+           && !map.value(QStringLiteral("rooms")).toArray().isEmpty();
 }
 
 void MainWindow::updateContinueButtonVisibility()
@@ -2222,25 +2144,25 @@ bool MainWindow::loadRunFromDisk()
 {
     QFile file(saveFilePath());
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, QStringLiteral("Save"), QStringLiteral("No save file found."));
+        QMessageBox::warning(this, QStringLiteral("存档"), QStringLiteral("未找到可用存档。"));
         return false;
     }
 
     QJsonParseError parseError;
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-        QMessageBox::warning(this, QStringLiteral("Save"), QStringLiteral("The save file could not be read."));
+        QMessageBox::warning(this, QStringLiteral("存档"), QStringLiteral("存档文件损坏，无法读取。"));
         return false;
     }
 
     const QJsonObject root = document.object();
     if (root.value(QStringLiteral("version")).toInt(0) != 1) {
-        QMessageBox::warning(this, QStringLiteral("Save"), QStringLiteral("The save file version is not supported."));
+        QMessageBox::warning(this, QStringLiteral("存档"), QStringLiteral("该存档版本不受支持。"));
         return false;
     }
 
     if (!GameState::instance().loadFromJson(root.value(QStringLiteral("state")).toObject())) {
-        QMessageBox::warning(this, QStringLiteral("Save"), QStringLiteral("The saved run state is incomplete."));
+        QMessageBox::warning(this, QStringLiteral("存档"), QStringLiteral("存档中的修读数据不完整。"));
         return false;
     }
 
@@ -2259,7 +2181,7 @@ bool MainWindow::loadRunFromDisk()
         m_pages->addWidget(m_mapPage);
     }
     if (!m_mapWidget || !m_mapWidget->loadFromJson(root.value(QStringLiteral("map")).toObject())) {
-        QMessageBox::warning(this, QStringLiteral("Save"), QStringLiteral("The saved map is incomplete."));
+        QMessageBox::warning(this, QStringLiteral("存档"), QStringLiteral("存档中的地图数据不完整。"));
         return false;
     }
 

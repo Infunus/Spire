@@ -39,7 +39,7 @@ enum class EventEffectType
     None,                    // 暂无真实效果，只显示选择结果。
     HealHp,                  // 回复心情，amount 表示回复量。代码名沿用 Hp，显示时统一叫“心情”。
     LoseHp,                  // 扣除心情，amount 表示扣除量。代码名沿用 Hp，显示时统一叫“心情”。
-    GainCoins,               // 调整 Money，amount 为正数时获得，为负数时扣除。
+    GainCoins,               // 调整余额，amount 为正数时获得，为负数时扣除。
     GainUsualScore,          // 获得平时分，amount 表示获得量。
     GainNextBattleStrength,  // 下一场战斗开局获得效率值，amount 表示获得量。
     GainNextBattleTurnBlock, // 下一场战斗每回合开始获得抗压值，amount 表示获得量。
@@ -147,11 +147,11 @@ namespace EventLibrary
         case EventEffectType::GainCoins:
             if (effect.amount > 0)
             {
-                return QStringLiteral("Money +%1。").arg(effect.amount);
+                return QStringLiteral("余额 +%1。").arg(effect.amount);
             }
             if (effect.amount < 0)
             {
-                return QStringLiteral("Money -%1。").arg(-effect.amount);
+                return QStringLiteral("余额 -%1。").arg(-effect.amount);
             }
             return QString();
         case EventEffectType::GainUsualScore:
@@ -496,7 +496,7 @@ namespace EventLibrary
                               EventEffectType::GainCoins,
                               GameBalance::Events::libraryNightCoins(),
                               QString(),
-                              QStringLiteral("获得 Money。"));
+                              QStringLiteral("获得余额。"));
 
         return makeEvent(QStringLiteral("library_night"),
                          GameText::EventText::previewTitle(),
@@ -591,7 +591,7 @@ namespace EventLibrary
                               QString(),
                               QStringLiteral("回复心情。"))
                 << makeChoice(QStringLiteral("收好那张票根"),
-                              QStringLiteral("票根背面写着物美会员信息。也许下次去超市时，它能帮你省下一点 Money。"),
+                              QStringLiteral("票根背面写着物美会员信息。也许下次去超市时，它能帮你省下一点余额。"),
                               EventEffectType::GainRelicById,
                               0,
                               RelicIds::luckyCoupon(),
@@ -937,7 +937,7 @@ namespace EventLibrary
         choices << makeChoiceWithEffects(QStringLiteral("准点蹲票"),
                                          QStringLiteral("你在整点按下刷新。页面卡住、恢复、又卡住，最后居然真的跳出了一张可购买的票。\n\n抢票过程耗掉了一些心情，票钱也真实地从余额里消失了，但你至少拿到了座位。"),
                                          ticketEffects,
-                                         QStringLiteral("失去心情，并失去 Money。"))
+                                         QStringLiteral("失去心情，并失去余额。"))
                 << makeChoiceWithEffects(QStringLiteral("上树洞蹲守"),
                                          QStringLiteral("你没抢到票，只好上树洞等别人出票。\n\n虽然略贵，但至少最后你成功买到了票。"),
                                          treeholeEffects,

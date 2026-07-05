@@ -2182,7 +2182,6 @@ bool BattleWidget::checkBattleEnd()
         } else {
             ++m_battleNumber;
             GameState::instance().recordEnemyDefeated(usualScoreReward,
-                                                      GameBalance::Rewards::battleCredits(),
                                                       defeatedEnemyCount);
             m_titleLabel->setText(GameText::Battle::battleWinFormat().arg(m_enemiesDefeated));
             m_tipLabel->setText(GameText::Battle::battleVictoryTipFormat()
@@ -2247,25 +2246,50 @@ QList<Enemy> BattleWidget::createEnemiesForBattle() const
         return enemies;
     }
 
-    const int roll = GameRandom::instance().bounded(GameBalance::Enemies::normalEnemyTypes());
-    if (roll == 0) {
-        enemies << Enemy::createCampusCultist();
-    } else if (roll == 1) {
-        enemies << Enemy::createHomeworkWorm();
-    } else if (roll == 2) {
-        enemies << Enemy::createDdlSlime()
-                << Enemy::createDdlSlime();
-    } else if (roll == 3) {
-        enemies << Enemy::createDdlSlime()
-                << Enemy::createProjectNob();
-    } else if (roll == 4) {
-        enemies << Enemy::createMorningAlarm()
-                << Enemy::createMorningAlarm();
-    } else if (roll == 5) {
-        enemies << Enemy::createClubFlyer()
-                << Enemy::createDdlSlime();
+    const int floor = GameState::instance().currentFloor();
+    if (floor < GameBalance::Enemies::earlyFloorLimit()) {
+        const int roll = GameRandom::instance().bounded(GameBalance::Enemies::earlyEncounterTypes());
+        if (roll == 0) {
+            enemies << Enemy::createCampusCultist();
+        } else if (roll == 1) {
+            enemies << Enemy::createDdlSlime();
+        } else if (roll == 2) {
+            enemies << Enemy::createMorningAlarm()
+                    << Enemy::createMorningAlarm();
+        } else {
+            enemies << Enemy::createClubFlyer();
+        }
+    } else if (floor < GameBalance::Enemies::middleFloorLimit()) {
+        const int roll = GameRandom::instance().bounded(GameBalance::Enemies::middleEncounterTypes());
+        if (roll == 0) {
+            enemies << Enemy::createHomeworkWorm();
+        } else if (roll == 1) {
+            enemies << Enemy::createDdlSlime()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 2) {
+            enemies << Enemy::createClubFlyer()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 3) {
+            enemies << Enemy::createTeachingSentry();
+        } else {
+            enemies << Enemy::createCampusCultist();
+        }
     } else {
-        enemies << Enemy::createTeachingSentry();
+        const int roll = GameRandom::instance().bounded(GameBalance::Enemies::lateEncounterTypes());
+        if (roll == 0) {
+            enemies << Enemy::createProjectNob();
+        } else if (roll == 1) {
+            enemies << Enemy::createDdlSlime()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 2) {
+            enemies << Enemy::createClubFlyer()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 3) {
+            enemies << Enemy::createTeachingSentry();
+        } else {
+            enemies << Enemy::createDdlSlime()
+                    << Enemy::createProjectNob();
+        }
     }
     return enemies;
 }
