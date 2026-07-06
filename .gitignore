@@ -26,6 +26,7 @@ Makefile
 *.dll
 *.a
 *.lib
+*.zip
 
 # VSCode
 .vscode/
