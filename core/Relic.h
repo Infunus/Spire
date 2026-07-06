@@ -11,6 +11,7 @@ enum class RelicEffectType
 {
     None,
     StartCombatBlock,
+    TurnStartBlock,
     StartCombatStrength,
     StartCombatDraw,
     EndCombatHeal,
@@ -55,6 +56,8 @@ inline QString boyaTowerBadge() { return QStringLiteral("boya_tower_badge"); }
 inline QString librarySeat() { return QStringLiteral("library_seat"); }
 inline QString packedSchoolbag() { return QStringLiteral("packed_schoolbag"); }
 inline QString luckyCoupon() { return QStringLiteral("lucky_coupon"); }
+inline QString qingtianObservationGuide() { return QStringLiteral("qingtian_observation_guide"); }
+inline QString pkuWatermelon() { return QStringLiteral("pku_watermelon"); }
 }
 
 namespace RelicLibrary
@@ -109,6 +112,27 @@ inline RelicData createLuckyCoupon()
                      GameBalance::Relics::luckyCouponDiscount());
 }
 
+inline RelicData createQingtianObservationGuide()
+{
+    return RelicData(RelicIds::qingtianObservationGuide(),
+                     GameText::RelicText::qingtianObservationGuideName(),
+                     GameText::RelicText::qingtianObservationGuideDescription(
+                         GameBalance::Relics::qingtianObservationGuideStrength()),
+                     GameText::RelicText::qingtianObservationGuideImage(),
+                     RelicEffectType::StartCombatStrength,
+                     GameBalance::Relics::qingtianObservationGuideStrength());
+}
+
+inline RelicData createPkuWatermelon()
+{
+    return RelicData(RelicIds::pkuWatermelon(),
+                     GameText::RelicText::pkuWatermelonName(),
+                     GameText::RelicText::pkuWatermelonDescription(GameBalance::Relics::pkuWatermelonTurnBlock()),
+                     GameText::RelicText::pkuWatermelonImage(),
+                     RelicEffectType::TurnStartBlock,
+                     GameBalance::Relics::pkuWatermelonTurnBlock());
+}
+
 inline RelicData starterRelic()
 {
     return createYanyuanMealCard();
@@ -121,7 +145,9 @@ inline QList<RelicData> allRelics()
            << createBoyaTowerBadge()
            << createLibrarySeat()
            << createPackedSchoolbag()
-           << createLuckyCoupon();
+           << createLuckyCoupon()
+           << createQingtianObservationGuide()
+           << createPkuWatermelon();
     return relics;
 }
 

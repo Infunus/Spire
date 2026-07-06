@@ -7,6 +7,8 @@
 #include "Potion.h"
 #include "Relic.h"
 
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QList>
 #include <QString>
 #include <QtGlobal>
@@ -41,9 +43,12 @@ public:
         m_maxHp = GameBalance::Player::startMaxHp();
         m_hp = m_maxHp;
         m_runSeed = seed == 0 ? 1 : seed;
+        m_hasRunSeed = true;
         GameRandom::instance().setSeed(m_runSeed);
         m_gradeScore = 0;
-        m_credits = 0;
+        m_finalExamScore = 0;
+        m_nextBattleStartStrength = 0;
+        m_nextBattleTurnBlock = 0;
         m_coins = GameBalance::Player::startCoins();
         m_currentFloor = 0;
         m_currentNodeType = MapNodeType::None;
@@ -61,9 +66,19 @@ public:
     int hp() const { return m_hp; }
     int maxHp() const { return m_maxHp; }
     int gradeScore() const { return m_gradeScore; }
-    int credits() const { return m_credits; }
+    int usualScore() const { return m_gradeScore; }
+    int finalExamScore() const { return m_finalExamScore; }
+    int nextBattleStartStrength() const { return m_nextBattleStartStrength; }
+    int nextBattleTurnBlock() const { return m_nextBattleTurnBlock; }
+    int totalScore() const
+    {
+        return qBound(0,
+                      (m_gradeScore + m_finalExamScore) / 2,
+                      GameBalance::CourseGrade::finalTotalScoreMax());
+    }
     int coins() const { return m_coins; }
     quint32 runSeed() const { return m_runSeed; }
+    bool hasRunSeed() const { return m_hasRunSeed; }
     int currentFloor() const { return m_currentFloor; }
     MapNodeType currentNodeType() const { return m_currentNodeType; }
     int defeatedEnemies() const { return m_defeatedEnemies; }
@@ -107,12 +122,49 @@ public:
 
     void addGradeScore(int amount)
     {
-        m_gradeScore = qMax(0, m_gradeScore + amount);
+        m_gradeScore = qBound(0,
+                              m_gradeScore + amount,
+                              GameBalance::CourseGrade::usualScoreMax());
     }
 
-    void addCredits(int amount)
+    void addUsualScore(int amount)
     {
-        m_credits = qMax(0, m_credits + amount);
+        addGradeScore(amount);
+    }
+
+    void setFinalExamScore(int score)
+    {
+        m_finalExamScore = qBound(0,
+                                  score,
+                                  GameBalance::CourseGrade::finalExamScoreMax());
+    }
+
+    void addNextBattleStartStrength(int amount)
+    {
+        if (amount > 0) {
+            m_nextBattleStartStrength += amount;
+        }
+    }
+
+    int consumeNextBattleStartStrength()
+    {
+        const int amount = m_nextBattleStartStrength;
+        m_nextBattleStartStrength = 0;
+        return amount;
+    }
+
+    void addNextBattleTurnBlock(int amount)
+    {
+        if (amount > 0) {
+            m_nextBattleTurnBlock += amount;
+        }
+    }
+
+    int consumeNextBattleTurnBlock()
+    {
+        const int amount = m_nextBattleTurnBlock;
+        m_nextBattleTurnBlock = 0;
+        return amount;
     }
 
     void addCoins(int amount)
@@ -256,52 +308,157 @@ public:
         return true;
     }
 
-    void recordEnemyDefeated(int gradeScoreReward = GameBalance::Rewards::battleGradeScore(),
-                             int creditReward = GameBalance::Rewards::battleCredits())
+    void recordEnemyDefeated(int usualScoreReward = GameBalance::Rewards::battleGradeScore(),
+                             int defeatedEnemyCount = 1)
     {
-        ++m_defeatedEnemies;
-        addGradeScore(gradeScoreReward);
-        addCredits(creditReward);
+        m_defeatedEnemies += qMax(1, defeatedEnemyCount);
+        addUsualScore(usualScoreReward);
         addCoins(GameBalance::Rewards::battleCoins());
     }
 
-    void recordEventFinished(int gradeScoreReward = GameBalance::Rewards::eventGradeScore())
+    void recordEventFinished()
     {
         ++m_eventsFinished;
-        addGradeScore(gradeScoreReward);
-        addCoins(GameBalance::Rewards::eventCoins());
     }
 
-    void recordBossDefeated(int gradeScoreReward = GameBalance::Rewards::bossGradeScore(),
-                            int creditReward = GameBalance::Rewards::bossCredits())
+    void recordBossDefeated(int finalExamScore = GameBalance::CourseGrade::finalExamStartScore())
     {
         m_bossDefeated = true;
-        addGradeScore(gradeScoreReward);
-        addCredits(creditReward);
+        setFinalExamScore(finalExamScore);
         addCoins(GameBalance::Rewards::bossCoins());
     }
 
     double estimatedGpa() const
     {
-        if (m_gradeScore >= GameBalance::Gpa::gradeAThreshold()) {
-            return GameBalance::Gpa::gradeAGpa();
+        return GameBalance::CourseGrade::gpaForTotalScore(totalScore());
+    }
+
+    QJsonObject toJson() const
+    {
+        QJsonArray cardArray;
+        for (const Card &card : m_ownedCards) {
+            if (card.id().isEmpty()) {
+                continue;
+            }
+            QJsonObject cardObject;
+            cardObject[QStringLiteral("id")] = card.id();
+            cardObject[QStringLiteral("upgraded")] = card.upgraded();
+            cardArray.append(cardObject);
         }
-        if (m_gradeScore >= GameBalance::Gpa::gradeAMinusThreshold()) {
-            return GameBalance::Gpa::gradeAMinusGpa();
+
+        QJsonArray relicArray;
+        for (const RelicData &relic : m_relics) {
+            if (!relic.id.isEmpty()) {
+                relicArray.append(relic.id);
+            }
         }
-        if (m_gradeScore >= GameBalance::Gpa::gradeBPlusThreshold()) {
-            return GameBalance::Gpa::gradeBPlusGpa();
+
+        QJsonArray potionArray;
+        for (const PotionData &potion : m_potions) {
+            if (!potion.id.isEmpty()) {
+                potionArray.append(potion.id);
+            }
         }
-        if (m_gradeScore >= GameBalance::Gpa::gradeBThreshold()) {
-            return GameBalance::Gpa::gradeBGpa();
+
+        QJsonObject json;
+        json[QStringLiteral("maxHp")] = m_maxHp;
+        json[QStringLiteral("hp")] = m_hp;
+        json[QStringLiteral("runSeed")] = QString::number(m_runSeed);
+        json[QStringLiteral("gradeScore")] = m_gradeScore;
+        json[QStringLiteral("finalExamScore")] = m_finalExamScore;
+        json[QStringLiteral("nextBattleStartStrength")] = m_nextBattleStartStrength;
+        json[QStringLiteral("nextBattleTurnBlock")] = m_nextBattleTurnBlock;
+        json[QStringLiteral("coins")] = m_coins;
+        json[QStringLiteral("currentFloor")] = m_currentFloor;
+        json[QStringLiteral("currentNodeType")] = static_cast<int>(m_currentNodeType);
+        json[QStringLiteral("defeatedEnemies")] = m_defeatedEnemies;
+        json[QStringLiteral("eventsFinished")] = m_eventsFinished;
+        json[QStringLiteral("bossDefeated")] = m_bossDefeated;
+        json[QStringLiteral("ownedCards")] = cardArray;
+        json[QStringLiteral("relics")] = relicArray;
+        json[QStringLiteral("potions")] = potionArray;
+        return json;
+    }
+
+    bool loadFromJson(const QJsonObject &json)
+    {
+        if (json.isEmpty()) {
+            return false;
         }
-        if (m_gradeScore >= GameBalance::Gpa::gradeBMinusThreshold()) {
-            return GameBalance::Gpa::gradeBMinusGpa();
+
+        const int loadedMaxHp = json.value(QStringLiteral("maxHp"))
+                                    .toInt(GameBalance::Player::startMaxHp());
+        if (loadedMaxHp <= 0) {
+            return false;
         }
-        if (m_gradeScore >= GameBalance::Gpa::passThreshold()) {
-            return GameBalance::Gpa::passGpa();
+
+        m_maxHp = qMax(1, loadedMaxHp);
+        m_hp = qBound(0, json.value(QStringLiteral("hp")).toInt(m_maxHp), m_maxHp);
+
+        const QJsonValue seedValue = json.value(QStringLiteral("runSeed"));
+        if (seedValue.isUndefined() || seedValue.isNull()) {
+            return false;
         }
-        return GameBalance::Gpa::failGpa();
+
+        bool seedOk = false;
+        quint32 loadedSeed = seedValue.toString().toUInt(&seedOk);
+        if (!seedOk) {
+            const int seedNumber = seedValue.toInt(0);
+            loadedSeed = seedNumber <= 0 ? 1u : static_cast<quint32>(seedNumber);
+        }
+        if (loadedSeed == 0) {
+            return false;
+        }
+        m_runSeed = loadedSeed;
+        m_hasRunSeed = true;
+        GameRandom::instance().setSeed(m_runSeed);
+
+        m_gradeScore = qBound(0,
+                              json.value(QStringLiteral("gradeScore")).toInt(0),
+                              GameBalance::CourseGrade::usualScoreMax());
+        m_finalExamScore = qBound(0,
+                                  json.value(QStringLiteral("finalExamScore")).toInt(0),
+                                  GameBalance::CourseGrade::finalExamScoreMax());
+        m_nextBattleStartStrength = qMax(0, json.value(QStringLiteral("nextBattleStartStrength")).toInt(0));
+        m_nextBattleTurnBlock = qMax(0, json.value(QStringLiteral("nextBattleTurnBlock")).toInt(0));
+        m_coins = qMax(0, json.value(QStringLiteral("coins")).toInt(GameBalance::Player::startCoins()));
+        m_currentFloor = qMax(0, json.value(QStringLiteral("currentFloor")).toInt(0));
+        const int nodeType = qBound(0,
+                                    json.value(QStringLiteral("currentNodeType")).toInt(0),
+                                    static_cast<int>(MapNodeType::Boss));
+        m_currentNodeType = static_cast<MapNodeType>(nodeType);
+        m_defeatedEnemies = qMax(0, json.value(QStringLiteral("defeatedEnemies")).toInt(0));
+        m_eventsFinished = qMax(0, json.value(QStringLiteral("eventsFinished")).toInt(0));
+        m_bossDefeated = json.value(QStringLiteral("bossDefeated")).toBool(false);
+
+        QList<Card> loadedCards;
+        const QJsonArray cardArray = json.value(QStringLiteral("ownedCards")).toArray();
+        for (const QJsonValue &value : cardArray) {
+            const QJsonObject cardObject = value.toObject();
+            const Card card = CardLibrary::byId(cardObject.value(QStringLiteral("id")).toString(),
+                                                cardObject.value(QStringLiteral("upgraded")).toBool(false));
+            if (!card.id().isEmpty()) {
+                loadedCards.append(card);
+            }
+        }
+        m_ownedCards = loadedCards.isEmpty() ? CardLibrary::starterDeck() : loadedCards;
+
+        m_relics.clear();
+        const QJsonArray relicArray = json.value(QStringLiteral("relics")).toArray();
+        for (const QJsonValue &value : relicArray) {
+            addRelicById(value.toString());
+        }
+        if (m_relics.isEmpty()) {
+            addRelic(RelicLibrary::starterRelic());
+        }
+
+        m_potions.clear();
+        const QJsonArray potionArray = json.value(QStringLiteral("potions")).toArray();
+        for (const QJsonValue &value : potionArray) {
+            addPotionById(value.toString());
+        }
+
+        return true;
     }
 
 private:
@@ -309,15 +466,22 @@ private:
         : m_hp(GameBalance::Player::startMaxHp()),
           m_maxHp(GameBalance::Player::startMaxHp()),
           m_gradeScore(0),
-          m_credits(0),
+          m_finalExamScore(0),
+          m_nextBattleStartStrength(0),
+          m_nextBattleTurnBlock(0),
           m_coins(GameBalance::Player::startCoins()),
-          m_runSeed(1),
+          m_runSeed(0),
+          m_hasRunSeed(false),
           m_currentFloor(0),
           m_currentNodeType(MapNodeType::None),
           m_defeatedEnemies(0),
           m_eventsFinished(0),
           m_bossDefeated(false)
     {
+        m_ownedCards = CardLibrary::starterDeck();
+        addRelic(RelicLibrary::starterRelic());
+        addPotion(PotionLibrary::createCoffeeShot());
+        addPotion(PotionLibrary::createAntiBreakSpray());
     }
 
     GameState(const GameState &) = delete;
@@ -326,9 +490,12 @@ private:
     int m_hp;
     int m_maxHp;
     int m_gradeScore;
-    int m_credits;
+    int m_finalExamScore;
+    int m_nextBattleStartStrength;
+    int m_nextBattleTurnBlock;
     int m_coins;
     quint32 m_runSeed;
+    bool m_hasRunSeed;
     int m_currentFloor;
     MapNodeType m_currentNodeType;
     int m_defeatedEnemies;

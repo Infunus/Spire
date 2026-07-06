@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -15,10 +15,20 @@ SOURCES += \
 
 HEADERS += \
     mainwindow.h \
-    ui/BattleWidget.h
+    $$files(core/*.h) \
+    $$files(ui/*.h)
 
 FORMS += \
     mainwindow.ui
+
+DISTFILES += \
+    $$files(resources/*, true)
+
+win32 {
+    resources_src = $$shell_path($$PWD/resources)
+    resources_dst = $$shell_path($$OUT_PWD/resources)
+    QMAKE_POST_LINK += $$QMAKE_COPY_DIR $$quote($$resources_src) $$quote($$resources_dst)
+}
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

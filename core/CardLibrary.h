@@ -223,12 +223,8 @@ inline QList<Card> starterDeck()
     deck << strike() << strike() << strike() << strike()
          << defend() << defend() << defend() << defend()
          << bash()
-         << inflame()
-         << heavyBlade()
          << pommel()
-         << shrug()
-         << anger()
-         << flex();
+         << shrug();
     return deck;
 }
 

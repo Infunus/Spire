@@ -54,6 +54,8 @@ private:
     QWidget *createArenaPanel();
     QWidget *createControlStrip();
     void setupInitialDemoText();
+    void applyNormalMessageStyle();
+    void applyBattleEndMessageStyle();
     void startRun();
     void startBattle();
     void beginPlayerTurn();
@@ -69,6 +71,7 @@ private:
     void refreshPileButtons();
     void rebuildStatusIcons(QHBoxLayout *layout, const QList<QPair<QString, int>> &statuses);
     void applyRelicsAtBattleStart();
+    void applyRelicsAtTurnStart();
     void applyRelicsAfterBattleWin();
     void usePotionAt(int potionIndex, int targetEnemyIndex = -1);
     void playCard(int handIndex, int targetEnemyIndex = -1);
@@ -78,6 +81,7 @@ private:
     void applyEnemyAction(int enemyIndex);
     void showSlashEffect(QWidget *anchor);
     void showImpactFlash(QWidget *anchor);
+    void collectEnemyScoreIfDefeated(int enemyIndex);
     void showPileDialog(PileKind pileKind);
     QString cardListText(const QList<Card> &cards) const;
     QString cardLine(const Card &card) const;
@@ -87,6 +91,9 @@ private:
     QList<Card> createDefaultCards() const;
     QList<Enemy> createEnemiesForBattle() const;
     int playerAttackDamage(const Card &card) const;
+    int currentUsualScoreRewardForEnemy(const Enemy &enemy) const;
+    int currentBattleUsualScoreReward() const;
+    int currentFinalExamScore() const;
     void showDamagePopup(QWidget *anchor, int damage);
     bool handlePotionEvent(QWidget *potionWidget, QEvent *event);
     bool potionTargetsEnemy(const PotionData &potion) const;
@@ -114,22 +121,25 @@ private:
     QPushButton *m_exhaustPileButton;
     QList<QLabel *> m_relicLabels;
     QList<QPushButton *> m_potionButtons;
-    QList<QPushButton *> m_handButtons;
+    QList<QWidget *> m_handButtons;
     QList<EnemyUnitWidget *> m_enemyWidgets;
 
     QList<Card> m_cardLibrary;
     QList<Card> m_exhaustPile;
     Hand m_hand;
     QList<Enemy> m_enemies;
+    QList<bool> m_enemyScoreCollected;
     int m_playerHp;
     int m_playerMaxHp;
     int m_playerBlock;
     int m_playerStrength;
+    int m_turnStartBlockBonus;
     int m_energy;
     int m_maxEnergy;
     int m_turnNumber;
     int m_battleNumber;
     int m_enemiesDefeated;
+    int m_pendingUsualScoreReward;
     int m_hoveredCardIndex;
     int m_dragCardIndex;
     int m_dragPotionIndex;

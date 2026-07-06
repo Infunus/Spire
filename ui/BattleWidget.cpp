@@ -9,6 +9,7 @@
 #include <QAbstractAnimation>
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDialog>
 #include <QDir>
 #include <QEvent>
@@ -17,6 +18,7 @@
 #include <QGraphicsOpacityEffect>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QImage>
 #include <QLabel>
 #include <QLayoutItem>
 #include <QMouseEvent>
@@ -28,20 +30,159 @@
 #include <QResizeEvent>
 #include <QSizePolicy>
 #include <QStringList>
-#include <QStyle>
-#include <QStyleOptionButton>
-#include <QStylePainter>
 #include <QTextEdit>
 #include <QTimer>
 #include <QVBoxLayout>
 
-class BattleCardButton : public QPushButton
+namespace
+{
+QString findProjectAssetPath(const QString &relativePath)
+{
+    if (relativePath.isEmpty() || QFileInfo(relativePath).isAbsolute()) {
+        return relativePath;
+    }
+
+    QStringList candidates;
+    auto addCandidatesFrom = [&candidates, &relativePath](const QDir &startDir) {
+        QDir dir(startDir);
+        for (int i = 0; i < 8; ++i) {
+            candidates << dir.filePath(relativePath);
+            candidates << dir.filePath(QStringLiteral("Spire/%1").arg(relativePath));
+            if (!dir.cdUp()) {
+                break;
+            }
+        }
+    };
+
+    addCandidatesFrom(QDir(QCoreApplication::applicationDirPath()));
+    addCandidatesFrom(QDir::current());
+    addCandidatesFrom(QDir(QFileInfo(QString::fromUtf8(__FILE__)).absolutePath()));
+
+    for (const QString &candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+    return relativePath;
+}
+
+QString battleStatusShortText(const QString &name)
+{
+    if (name == GameText::Battle::playerStrengthStatusName()) {
+        return GameText::Battle::playerStrengthStatusShort();
+    }
+    if (name == GameText::Battle::playerVulnerableStatusName()) {
+        return GameText::Battle::playerVulnerableStatusShort();
+    }
+    if (name == GameText::EnemyText::weakStatusName()) {
+        return GameText::EnemyText::weakStatusShort();
+    }
+    if (name == GameText::EnemyText::vulnerableStatusName()) {
+        return GameText::EnemyText::vulnerableStatusShort();
+    }
+    if (name == GameText::EnemyText::strengthStatusName()) {
+        return GameText::EnemyText::strengthStatusShort();
+    }
+    return name.left(1);
+}
+
+QString battleStatusRulesText(const QString &name)
+{
+    if (name == GameText::Battle::playerStrengthStatusName()) {
+        return GameText::Battle::playerStrengthStatusRules();
+    }
+    if (name == GameText::Battle::playerVulnerableStatusName()) {
+        return GameText::Battle::playerVulnerableStatusRules();
+    }
+    if (name == GameText::EnemyText::weakStatusName()) {
+        return GameText::EnemyText::weakStatusRules();
+    }
+    if (name == GameText::EnemyText::vulnerableStatusName()) {
+        return GameText::EnemyText::vulnerableStatusRules();
+    }
+    if (name == GameText::EnemyText::strengthStatusName()) {
+        return GameText::EnemyText::strengthStatusRules();
+    }
+    if (name == GameText::EnemyText::blockStatusName()) {
+        return GameText::EnemyText::blockStatusRules();
+    }
+    if (name == GameText::Battle::playerBlockStatusName()) {
+        return GameText::Battle::playerBlockStatusRules();
+    }
+    return QString();
+}
+
+QString battleStatusToolTip(const QString &name, int value)
+{
+    const QString rulesText = battleStatusRulesText(name);
+    if (rulesText.isEmpty()) {
+        return QStringLiteral("%1 x%2").arg(name).arg(value);
+    }
+    return GameText::Battle::statusTooltip(name, value, rulesText);
+}
+
+QString defaultCardImagePath(const Card &card)
+{
+    if (!card.imagePath().isEmpty()) {
+        return card.imagePath();
+    }
+
+    // 旧牌组里可能已经创建了没有 imagePath 的 Card，这里按 id 补默认图，避免手牌空图。
+    if (card.id() == CardIds::strike()) {
+        return GameText::CardText::strikeImage();
+    }
+    if (card.id() == CardIds::defend()) {
+        return GameText::CardText::defendImage();
+    }
+    if (card.id() == CardIds::bash()) {
+        return GameText::CardText::bashImage();
+    }
+    if (card.id() == CardIds::inflame()) {
+        return GameText::CardText::inflameImage();
+    }
+    if (card.id() == CardIds::heavyBlade()) {
+        return GameText::CardText::heavyBladeImage();
+    }
+    if (card.id() == CardIds::pommel()) {
+        return GameText::CardText::pommelImage();
+    }
+    if (card.id() == CardIds::shrug()) {
+        return GameText::CardText::shrugImage();
+    }
+    if (card.id() == CardIds::anger()) {
+        return GameText::CardText::angerImage();
+    }
+    if (card.id() == CardIds::flex()) {
+        return GameText::CardText::flexImage();
+    }
+    if (card.id() == CardIds::cleave()) {
+        return GameText::CardText::cleaveImage();
+    }
+    return QString();
+}
+}
+
+class BattleCardButton : public QWidget
 {
 public:
-    explicit BattleCardButton(const QString &text, QWidget *parent = nullptr)
-        : QPushButton(text, parent),
-          m_angle(0)
+    explicit BattleCardButton(const Card &card, QWidget *parent = nullptr)
+        : QWidget(parent),
+          m_card(card),
+          m_artPath(defaultCardImagePath(card)),
+          m_resolvedArtPath(findProjectAssetPath(m_artPath)),
+          m_angle(0),
+          m_art(m_resolvedArtPath),
+          m_reportedMissingArt(false),
+          m_artLabel(new QLabel(this))
     {
+        setObjectName("BattleCardButton");
+        setMouseTracking(true);
+        setAttribute(Qt::WA_StyledBackground, false);
+        setAutoFillBackground(false);
+        m_artLabel->setAlignment(Qt::AlignCenter);
+        m_artLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+        m_artLabel->setStyleSheet("background: transparent; border: 0;");
+        updateArtLabel();
     }
 
     void setPaintAngle(qreal value)
@@ -54,24 +195,184 @@ public:
     }
 
 protected:
+    void resizeEvent(QResizeEvent *event) override
+    {
+        QWidget::resizeEvent(event);
+        updateArtLabel();
+    }
+
     void paintEvent(QPaintEvent *event) override
     {
         Q_UNUSED(event);
 
-        QStyleOptionButton option;
-        initStyleOption(&option);
-
-        QStylePainter painter(this);
+        QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setRenderHint(QPainter::SmoothPixmapTransform);
-        painter.translate(rect().center());
-        painter.rotate(m_angle);
-        painter.translate(-rect().center());
-        painter.drawControl(QStyle::CE_PushButton, option);
+
+        const QRectF cardRect = rect().adjusted(4, 4, -4, -4);
+        const bool active = isEnabled();
+        const bool hovered = underMouse() && active;
+
+        QPainterPath cardPath;
+        cardPath.addRoundedRect(cardRect, 17, 17);
+
+        QLinearGradient cardFill(cardRect.topLeft(), cardRect.bottomLeft());
+        cardFill.setColorAt(0.0, active ? QColor(45, 107, 132) : QColor(87, 84, 78));
+        cardFill.setColorAt(0.12, active ? QColor(245, 238, 206) : QColor(158, 151, 136));
+        cardFill.setColorAt(0.23, active ? QColor(215, 176, 96) : QColor(126, 115, 96));
+        cardFill.setColorAt(0.72, active ? QColor(116, 63, 34) : QColor(87, 76, 65));
+        cardFill.setColorAt(1.0, active ? QColor(239, 204, 137) : QColor(130, 119, 100));
+        painter.fillPath(cardPath, cardFill);
+
+        painter.setPen(QPen(hovered ? QColor(70, 225, 235)
+                                    : (active ? QColor(111, 73, 40) : QColor(78, 70, 61)),
+                            hovered ? 5 : 4));
+        painter.drawPath(cardPath);
+
+        const QRectF titleRect(cardRect.left() + 25, cardRect.top() + 10, cardRect.width() - 36, 30);
+        QPainterPath titlePath;
+        titlePath.addRoundedRect(titleRect, 9, 9);
+        painter.fillPath(titlePath, QColor(255, 238, 182, 224));
+        painter.setPen(QPen(QColor(105, 63, 38), 2));
+        painter.drawPath(titlePath);
+
+        QFont titleFont = painter.font();
+        titleFont.setPointSize(9);
+        titleFont.setBold(true);
+        painter.setFont(titleFont);
+        painter.setPen(QColor(39, 27, 18));
+        painter.drawText(titleRect.adjusted(4, 0, -4, 0),
+                         Qt::AlignCenter | Qt::TextWordWrap,
+                         m_card.displayName());
+
+        const QPointF costCenter(cardRect.left() + 24, cardRect.top() + 24);
+        QRadialGradient costFill(costCenter, 18);
+        costFill.setColorAt(0.0, QColor(255, 251, 210));
+        costFill.setColorAt(0.55, QColor(238, 122, 44));
+        costFill.setColorAt(1.0, QColor(153, 39, 30));
+        painter.setBrush(costFill);
+        painter.setPen(QPen(QColor(255, 223, 103), 3));
+        painter.drawEllipse(costCenter, 17, 17);
+
+        QFont costFont = painter.font();
+        costFont.setPointSize(12);
+        costFont.setBold(true);
+        painter.setFont(costFont);
+        painter.setPen(Qt::white);
+        painter.drawText(QRectF(costCenter.x() - 14, costCenter.y() - 13, 28, 26),
+                         Qt::AlignCenter,
+                         QString::number(m_card.cost()));
+
+        const QRectF artRect(cardRect.left() + 13, cardRect.top() + 45, cardRect.width() - 26, cardRect.height() * 0.46);
+        QPainterPath artPath;
+        artPath.addRoundedRect(artRect, 10, 10);
+        if (m_art.isNull()) {
+            if (!m_reportedMissingArt && !m_artPath.isEmpty()) {
+                qWarning() << "Failed to load card art" << m_card.id() << m_card.displayName()
+                           << "from" << m_artPath << "resolved as" << m_resolvedArtPath;
+                m_reportedMissingArt = true;
+            }
+            QLinearGradient fallback(artRect.topLeft(), artRect.bottomRight());
+            fallback.setColorAt(0.0, QColor(87, 32, 35));
+            fallback.setColorAt(1.0, QColor(31, 22, 24));
+            painter.fillPath(artPath, fallback);
+            painter.setPen(QColor(255, 232, 180));
+            QFont missingFont = painter.font();
+            missingFont.setPointSize(8);
+            missingFont.setBold(true);
+            painter.setFont(missingFont);
+            painter.drawText(artRect.adjusted(6, 6, -6, -6),
+                             Qt::AlignCenter | Qt::TextWordWrap,
+                             m_artPath.isEmpty()
+                                 ? QStringLiteral("缺图")
+                                 : QStringLiteral("缺图\n%1").arg(QFileInfo(m_artPath).fileName()));
+        }
+        painter.setPen(QPen(QColor(91, 55, 37), 3));
+        painter.drawPath(artPath);
+
+        const QRectF textRect(cardRect.left() + 13,
+                              artRect.bottom() + 8,
+                              cardRect.width() - 26,
+                              cardRect.bottom() - artRect.bottom() - 17);
+        QPainterPath textPath;
+        textPath.addRoundedRect(textRect, 9, 9);
+        QLinearGradient textFill(textRect.topLeft(), textRect.bottomLeft());
+        textFill.setColorAt(0.0, QColor(255, 241, 198, 232));
+        textFill.setColorAt(1.0, QColor(227, 178, 104, 232));
+        painter.fillPath(textPath, textFill);
+        painter.setPen(QPen(QColor(111, 66, 39), 2));
+        painter.drawPath(textPath);
+
+        QFont descFont = painter.font();
+        descFont.setPointSize(8);
+        descFont.setBold(true);
+        painter.setFont(descFont);
+        painter.setPen(QColor(42, 26, 17));
+        painter.drawText(textRect.adjusted(7, 5, -7, -5),
+                         Qt::AlignCenter | Qt::TextWordWrap,
+                         m_card.description());
+
+        if (!active) {
+            painter.fillPath(cardPath, QColor(45, 41, 38, 118));
+        }
     }
 
 private:
+    QRect artLabelRect() const
+    {
+        const QRectF cardRect = rect().adjusted(4, 4, -4, -4);
+        const QRectF artRect(cardRect.left() + 13,
+                             cardRect.top() + 45,
+                             cardRect.width() - 26,
+                             cardRect.height() * 0.46);
+        return artRect.toAlignedRect().adjusted(3, 3, -3, -3);
+    }
+
+    void updateArtLabel()
+    {
+        if (m_art.isNull() && !m_resolvedArtPath.isEmpty()) {
+            m_art.load(m_resolvedArtPath);
+        }
+        if (m_art.isNull() || width() <= 0 || height() <= 0) {
+            m_artLabel->hide();
+            return;
+        }
+
+        const QRect target = artLabelRect();
+        if (target.width() <= 0 || target.height() <= 0) {
+            m_artLabel->hide();
+            return;
+        }
+
+        const QPixmap source = QPixmap::fromImage(m_art);
+        const QPixmap scaled = source.scaled(target.size(),
+                                             Qt::KeepAspectRatioByExpanding,
+                                             Qt::SmoothTransformation);
+        const QRect sourceRect(qMax(0, (scaled.width() - target.width()) / 2),
+                               qMax(0, (scaled.height() - target.height()) / 2),
+                               target.width(),
+                               target.height());
+
+        QPixmap cropped(target.size());
+        cropped.fill(Qt::transparent);
+        QPainter cropPainter(&cropped);
+        cropPainter.setRenderHint(QPainter::SmoothPixmapTransform);
+        cropPainter.drawPixmap(cropped.rect(), scaled, sourceRect);
+        cropPainter.end();
+
+        m_artLabel->setGeometry(target);
+        m_artLabel->setPixmap(cropped);
+        m_artLabel->show();
+        m_artLabel->raise();
+    }
+
+    Card m_card;
+    QString m_artPath;
+    QString m_resolvedArtPath;
     qreal m_angle;
+    QImage m_art;
+    mutable bool m_reportedMissingArt;
+    QLabel *m_artLabel;
 };
 
 class PlayerPortraitWidget : public QWidget
@@ -242,9 +543,10 @@ public:
           m_healthBar(new QProgressBar(this)),
           m_statusPanel(new QWidget(this)),
           m_statusLayout(new QHBoxLayout(m_statusPanel)),
+          m_scoreLabel(new QLabel(this)),
           m_intentLabel(new QLabel(this))
     {
-        setFixedSize(240, 285);
+        setFixedSize(240, 320);
         setAttribute(Qt::WA_StyledBackground, true);
         setStyleSheet("EnemyUnitWidget { background: transparent; }");
 
@@ -278,6 +580,13 @@ public:
         m_statusLayout->setSpacing(5);
         m_statusPanel->setStyleSheet("background: transparent;");
 
+        m_scoreLabel->setAlignment(Qt::AlignCenter);
+        m_scoreLabel->setFixedSize(200, 28);
+        m_scoreLabel->setStyleSheet(
+            "QLabel { background: rgba(74, 48, 18, 168);"
+            "border: 1px solid rgba(255, 226, 168, 155); border-radius: 10px;"
+            "color: #ffe3a0; font-size: 13px; font-weight: 900; padding: 4px; }");
+
         m_intentLabel->setAlignment(Qt::AlignCenter);
         m_intentLabel->setWordWrap(true);
         m_intentLabel->setFixedSize(200, 60);
@@ -297,15 +606,16 @@ public:
         hpLayout->addWidget(m_healthBar);
         root->addLayout(hpLayout);
         root->addWidget(m_statusPanel, 0, Qt::AlignCenter);
+        root->addWidget(m_scoreLabel, 0, Qt::AlignCenter);
         root->addWidget(m_intentLabel, 0, Qt::AlignCenter);
     }
 
     QWidget *portraitAnchor() const { return m_portraitLabel; }
 
-    void setEnemy(const Enemy &enemy)
+    void setEnemy(const Enemy &enemy, int scoreReward, int turnNumber, bool finalExam)
     {
         if (!enemy.imagePath().isEmpty()) {
-            const QPixmap enemyPixmap(enemy.imagePath());
+            const QPixmap enemyPixmap(findProjectAssetPath(enemy.imagePath()));
             if (!enemyPixmap.isNull()) {
                 m_portraitLabel->setText(QString());
                 m_portraitLabel->setPixmap(enemyPixmap.scaled(m_portraitLabel->size(),
@@ -321,10 +631,18 @@ public:
 
         m_healthBar->setRange(0, enemy.maxHp());
         m_healthBar->setValue(qBound(0, enemy.hp(), enemy.maxHp()));
-        m_healthBar->setFormat(GameText::Battle::hpFormat().arg(qMax(0, enemy.hp())).arg(enemy.maxHp()));
+        m_healthBar->setFormat(GameText::Battle::enemyHpFormat().arg(qMax(0, enemy.hp())).arg(enemy.maxHp()));
         m_blockBadge->setText(QString::number(enemy.block()));
         m_blockBadge->setVisible(enemy.block() > 0);
+        m_blockBadge->setToolTip(enemy.block() > 0
+                                     ? battleStatusToolTip(GameText::EnemyText::blockStatusName(), enemy.block())
+                                     : QString());
         m_intentLabel->setText(QStringLiteral("%1\n%2").arg(enemy.name(), enemy.intentText()));
+        m_intentLabel->setToolTip(enemy.intentTooltip());
+        m_scoreLabel->setText(finalExam
+                                  ? GameText::Battle::finalExamScoreFormat().arg(scoreReward)
+                                  : GameText::Battle::usualScoreRewardFormat().arg(scoreReward));
+        m_scoreLabel->setToolTip(GameText::Battle::scoreRewardTooltipFormat().arg(qMax(1, turnNumber)));
 
         rebuildStatuses(enemy);
         setVisible(!enemy.isDead());
@@ -340,20 +658,23 @@ private:
 
         QList<QPair<QString, int>> statuses;
         if (enemy.weakStacks() > 0) {
-            statuses << qMakePair(QStringLiteral("虚弱"), enemy.weakStacks());
+            statuses << qMakePair(GameText::EnemyText::weakStatusName(), enemy.weakStacks());
         }
         if (enemy.vulnerableStacks() > 0) {
-            statuses << qMakePair(QStringLiteral("易伤"), enemy.vulnerableStacks());
+            statuses << qMakePair(GameText::EnemyText::vulnerableStatusName(), enemy.vulnerableStacks());
         }
         if (enemy.strength() > 0) {
-            statuses << qMakePair(QStringLiteral("强度"), enemy.strength());
+            statuses << qMakePair(GameText::EnemyText::strengthStatusName(), enemy.strength());
         }
 
         for (const QPair<QString, int> &status : statuses) {
-            QLabel *icon = new QLabel(QStringLiteral("%1\n%2").arg(status.first.left(1)).arg(status.second), m_statusPanel);
+            QLabel *icon = new QLabel(QStringLiteral("%1\n%2")
+                                          .arg(battleStatusShortText(status.first))
+                                          .arg(status.second),
+                                      m_statusPanel);
             icon->setFixedSize(34, 34);
             icon->setAlignment(Qt::AlignCenter);
-            icon->setToolTip(QStringLiteral("%1 x%2").arg(status.first).arg(status.second));
+            icon->setToolTip(battleStatusToolTip(status.first, status.second));
             icon->setStyleSheet(
                 "QLabel { background: #8f5bd1; border: 2px solid rgba(255,255,255,175);"
                 "border-radius: 17px; color: white; font-size: 11px; font-weight: 900; padding: 0px; }");
@@ -366,6 +687,7 @@ private:
     QProgressBar *m_healthBar;
     QWidget *m_statusPanel;
     QHBoxLayout *m_statusLayout;
+    QLabel *m_scoreLabel;
     QLabel *m_intentLabel;
 };
 
@@ -391,11 +713,13 @@ BattleWidget::BattleWidget(QWidget *parent)
       m_playerMaxHp(GameBalance::Player::startMaxHp()),
       m_playerBlock(0),
       m_playerStrength(0),
+      m_turnStartBlockBonus(0),
       m_energy(GameBalance::Battle::energyPerTurn()),
       m_maxEnergy(GameBalance::Battle::energyPerTurn()),
       m_turnNumber(1),
       m_battleNumber(1),
       m_enemiesDefeated(0),
+      m_pendingUsualScoreReward(0),
       m_hoveredCardIndex(-1),
       m_dragCardIndex(-1),
       m_dragPotionIndex(-1),
@@ -583,7 +907,8 @@ QWidget *BattleWidget::createControlStrip()
     QHBoxLayout *layout = new QHBoxLayout(strip);
     layout->setContentsMargins(12, 7, 12, 7);
     layout->setSpacing(8);
-    m_titleLabel->setMinimumWidth(250);
+    m_titleLabel->setMinimumWidth(130);
+    m_titleLabel->setMaximumWidth(180);
     layout->addWidget(m_titleLabel);
     layout->addWidget(m_playerInfoLabel, 1);
     layout->addWidget(m_energyCrystalWidget);
@@ -633,9 +958,55 @@ QWidget *BattleWidget::createControlStrip()
 
 void BattleWidget::setupInitialDemoText()
 {
+    applyNormalMessageStyle();
     m_titleLabel->setText(GameText::App::title());
     m_tipLabel->setText(GameText::Battle::handTipText());
     refreshUi();
+}
+
+void BattleWidget::applyNormalMessageStyle()
+{
+    m_titleLabel->setStyleSheet(
+        "background: rgba(7, 11, 17, 96);"
+        "border: 0;"
+        "border-radius: 10px;"
+        "color: #f5ead2;"
+        "font-size: 22px;"
+        "font-weight: 900;"
+        "padding: 5px 16px;");
+
+    m_tipLabel->setStyleSheet(
+        "QLabel {"
+        "  background: transparent;"
+        "  border: 0;"
+        "  padding: 8px 12px;"
+        "  color: rgba(255, 244, 215, 180);"
+        "  font-size: 16px;"
+        "  font-weight: 800;"
+        "}");
+}
+
+void BattleWidget::applyBattleEndMessageStyle()
+{
+    m_titleLabel->setStyleSheet(
+        "background: rgba(255, 241, 204, 232);"
+        "border: 2px solid rgba(83, 50, 27, 150);"
+        "border-radius: 10px;"
+        "color: #24160d;"
+        "font-size: 22px;"
+        "font-weight: 900;"
+        "padding: 5px 16px;");
+
+    m_tipLabel->setStyleSheet(
+        "QLabel {"
+        "  background: rgba(255, 241, 204, 226);"
+        "  border: 2px solid rgba(83, 50, 27, 150);"
+        "  border-radius: 12px;"
+        "  padding: 10px 14px;"
+        "  color: #24160d;"
+        "  font-size: 16px;"
+        "  font-weight: 900;"
+        "}");
 }
 
 void BattleWidget::setBossBattle(bool isBossBattle)
@@ -691,12 +1062,19 @@ void BattleWidget::startRun()
 
 void BattleWidget::startBattle()
 {
+    applyNormalMessageStyle();
     m_hand.setDeck(m_cardLibrary);
     m_exhaustPile.clear();
     m_enemies = createEnemiesForBattle();
+    m_enemyScoreCollected.clear();
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        m_enemyScoreCollected.append(false);
+    }
+    m_pendingUsualScoreReward = 0;
     rebuildEnemyWidgets();
     m_playerBlock = 0;
     m_playerStrength = 0;
+    m_turnStartBlockBonus = GameState::instance().consumeNextBattleTurnBlock();
     m_energy = m_maxEnergy;
     m_turnNumber = 0;
     m_hoveredCardIndex = -1;
@@ -709,15 +1087,10 @@ void BattleWidget::startBattle()
     m_mapCallbackScheduled = false;
 
     setBossBattle(m_battleNumber >= GameBalance::Battle::bossBattleNumber());
-    QString enemyTitle = GameText::Battle::defaultEnemyName();
-    if (m_enemies.size() == 1) {
-        enemyTitle = m_enemies.first().name();
-    } else if (m_enemies.size() > 1) {
-        enemyTitle = QStringLiteral("%1 等 %2 个敌人").arg(m_enemies.first().name()).arg(m_enemies.size());
-    }
-    m_titleLabel->setText(GameText::Battle::battleTitleFormat().arg(m_battleNumber).arg(enemyTitle));
+    m_titleLabel->setText(GameText::Battle::battleTitleFormat().arg(m_battleNumber));
     beginPlayerTurn();
     applyRelicsAtBattleStart();
+    m_playerStrength += GameState::instance().consumeNextBattleStartStrength();
     refreshUi();
 }
 
@@ -725,6 +1098,10 @@ void BattleWidget::beginPlayerTurn()
 {
     ++m_turnNumber;
     m_playerBlock = 0;
+    if (m_turnStartBlockBonus > 0) {
+        m_playerBlock += m_turnStartBlockBonus;
+    }
+    applyRelicsAtTurnStart();
     m_energy = m_maxEnergy;
     m_playerTurn = true;
     drawCards(GameBalance::Battle::cardsDrawnEachTurn());
@@ -744,37 +1121,12 @@ void BattleWidget::rebuildHandButtons()
 
     for (int i = 0; i < m_hand.size(); ++i) {
         const Card card = m_hand.cardAt(i);
-        BattleCardButton *button = new BattleCardButton(card.buttonText(), m_handPanel);
+        BattleCardButton *button = new BattleCardButton(card, m_handPanel);
         button->setProperty("cardIndex", i);
         button->setCursor(Qt::PointingHandCursor);
         button->setToolTip(cardLine(card));
         button->setEnabled(m_playerTurn && !m_battleEnded && m_energy >= card.cost());
         button->installEventFilter(this);
-
-        const QString borderColor = m_energy >= card.cost() ? QStringLiteral("#6f4928")
-                                                            : QStringLiteral("#8b332c");
-        button->setStyleSheet(QStringLiteral(
-            "QPushButton {"
-            "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "                              stop:0 #2f6f89, stop:0.14 #e8f8f8, stop:0.22 #d8bc7c, stop:0.58 #8a4a2b, stop:1 #f3d99c);"
-            "  border: 4px solid %1;"
-            "  border-radius: 17px;"
-            "  color: #24170f;"
-            "  font-size: 13px;"
-            "  font-weight: 900;"
-            "  text-align: center;"
-            "  padding: 10px 8px;"
-            "}"
-            "QPushButton:hover {"
-            "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-            "                              stop:0 #5ed7e6, stop:0.16 #fffaf0, stop:0.58 #ffd979, stop:1 #d28c37);"
-            "  border-color: #39dce8;"
-            "}"
-            "QPushButton:disabled {"
-            "  background: #7b756a;"
-            "  border-color: #4e463d;"
-            "  color: #d0c4b2;"
-            "}").arg(borderColor));
         button->show();
         button->raise();
         m_handButtons.append(button);
@@ -806,7 +1158,7 @@ void BattleWidget::layoutHandButtons(bool animate)
 
     int visibleIndex = 0;
     for (int i = 0; i < count; ++i) {
-        QPushButton *button = m_handButtons.at(i);
+        QWidget *button = m_handButtons.at(i);
         if (!button) {
             continue;
         }
@@ -902,24 +1254,21 @@ bool BattleWidget::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::MouseMove && m_dragCardIndex == handIndex) {
         QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
         if ((mouseEvent->globalPosition().toPoint() - m_dragStartPos).manhattanLength() >= QApplication::startDragDistance()) {
-            QPushButton *cardButton = qobject_cast<QPushButton *>(cardWidget);
-            if (cardButton && !m_draggingCardEntity) {
-                const QRect globalRect(cardButton->mapToGlobal(QPoint(0, 0)), cardButton->size());
-                cardButton->setParent(this);
-                cardButton->setGeometry(QRect(mapFromGlobal(globalRect.topLeft()), globalRect.size()));
-                if (BattleCardButton *battleCard = dynamic_cast<BattleCardButton *>(cardButton)) {
+            if (!m_draggingCardEntity) {
+                const QRect globalRect(cardWidget->mapToGlobal(QPoint(0, 0)), cardWidget->size());
+                cardWidget->setParent(this);
+                cardWidget->setGeometry(QRect(mapFromGlobal(globalRect.topLeft()), globalRect.size()));
+                if (BattleCardButton *battleCard = dynamic_cast<BattleCardButton *>(cardWidget)) {
                     battleCard->setPaintAngle(0);
                 }
-                cardButton->show();
-                cardButton->raise();
+                cardWidget->show();
+                cardWidget->raise();
                 m_draggingCardEntity = true;
                 layoutHandButtons(true);
             }
-            if (cardButton) {
-                cardButton->move(mapFromGlobal(mouseEvent->globalPosition().toPoint())
-                                 - QPoint(cardButton->width() / 2, cardButton->height() / 2));
-                cardButton->raise();
-            }
+            cardWidget->move(mapFromGlobal(mouseEvent->globalPosition().toPoint())
+                             - QPoint(cardWidget->width() / 2, cardWidget->height() / 2));
+            cardWidget->raise();
             return true;
         }
     }
@@ -1067,20 +1416,26 @@ void BattleWidget::refreshUi()
 {
     m_playerHealthBar->setRange(0, m_playerMaxHp);
     m_playerHealthBar->setValue(qBound(0, m_playerHp, m_playerMaxHp));
-    m_playerHealthBar->setFormat(GameText::Battle::hpFormat().arg(qMax(0, m_playerHp)).arg(m_playerMaxHp));
+    m_playerHealthBar->setFormat(GameText::Battle::playerHpFormat().arg(qMax(0, m_playerHp)).arg(m_playerMaxHp));
 
     m_playerBlockBadge->setText(QString::number(m_playerBlock));
     m_playerBlockBadge->setVisible(m_playerBlock > 0);
+    m_playerBlockBadge->setToolTip(m_playerBlock > 0
+                                       ? battleStatusToolTip(GameText::Battle::playerBlockStatusName(), m_playerBlock)
+                                       : QString());
     m_energyCrystalWidget->setEnergy(m_energy, m_maxEnergy);
 
     QList<QPair<QString, int>> playerStatuses;
     if (m_playerStrength > 0) {
-        playerStatuses << qMakePair(QStringLiteral("强度"), m_playerStrength);
+        playerStatuses << qMakePair(GameText::Battle::playerStrengthStatusName(), m_playerStrength);
     }
     rebuildStatusIcons(m_playerStatusLayout, playerStatuses);
 
     for (int i = 0; i < m_enemyWidgets.size() && i < m_enemies.size(); ++i) {
-        m_enemyWidgets.at(i)->setEnemy(m_enemies.at(i));
+        const bool finalExam = m_battleNumber >= GameBalance::Battle::bossBattleNumber();
+        const int scoreReward = finalExam ? currentFinalExamScore()
+                                          : currentUsualScoreRewardForEnemy(m_enemies.at(i));
+        m_enemyWidgets.at(i)->setEnemy(m_enemies.at(i), scoreReward, m_turnNumber, finalExam);
     }
     layoutEnemyWidgets();
 
@@ -1088,7 +1443,8 @@ void BattleWidget::refreshUi()
                                    .arg(m_turnNumber)
                                    .arg(m_energy)
                                    .arg(m_maxEnergy)
-                                   .arg(m_playerStrength));
+                                   .arg(m_playerStrength)
+                                   .arg(GameState::instance().usualScore()));
 
     if (!m_battleEnded) {
         m_tipLabel->setText(GameText::Battle::handTipText());
@@ -1108,7 +1464,10 @@ void BattleWidget::rebuildEnemyWidgets()
     for (int i = 0; i < m_enemies.size(); ++i) {
         EnemyUnitWidget *enemyWidget = new EnemyUnitWidget(m_enemyBoard);
         enemyWidget->setProperty("enemyIndex", i);
-        enemyWidget->setEnemy(m_enemies.at(i));
+        const bool finalExam = m_battleNumber >= GameBalance::Battle::bossBattleNumber();
+        const int scoreReward = finalExam ? currentFinalExamScore()
+                                          : currentUsualScoreRewardForEnemy(m_enemies.at(i));
+        enemyWidget->setEnemy(m_enemies.at(i), scoreReward, m_turnNumber, finalExam);
         enemyWidget->show();
         m_enemyWidgets.append(enemyWidget);
     }
@@ -1135,7 +1494,7 @@ void BattleWidget::layoutEnemyWidgets()
         return;
     }
 
-    const QSize unitSize(240, 285);
+    const QSize unitSize(240, 320);
     const int centerX = m_enemyBoard->width() / 2;
     const int centerY = m_enemyBoard->height() / 2;
     const int horizontalStep = aliveCount <= 2 ? 222 : 184;
@@ -1261,7 +1620,7 @@ void BattleWidget::refreshPotionSlots()
 
         const PotionData potion = potions.at(i);
         button->setText(potion.name);
-        button->setToolTip(QStringLiteral("%1\n拖动到目标使用").arg(potion.description));
+        button->setToolTip(GameText::Battle::potionUseTooltip(potion.description));
         button->setEnabled(!m_battleEnded && m_playerTurn);
         button->setStyleSheet("background: rgba(45, 76, 92, 205); border: 1px solid rgba(178, 225, 240, 150); border-radius: 8px; color: #effcff; font-size: 12px; font-weight: 800;");
     }
@@ -1278,11 +1637,13 @@ void BattleWidget::rebuildStatusIcons(QHBoxLayout *layout, const QList<QPair<QSt
 {
     clearStatusLayout(layout);
     for (const QPair<QString, int> &status : statuses) {
-        QLabel *icon = new QLabel(QStringLiteral("%1\n%2").arg(status.first.left(1)).arg(status.second),
+        QLabel *icon = new QLabel(QStringLiteral("%1\n%2")
+                                      .arg(battleStatusShortText(status.first))
+                                      .arg(status.second),
                                   layout->parentWidget());
         icon->setFixedSize(34, 34);
         icon->setAlignment(Qt::AlignCenter);
-        icon->setToolTip(QStringLiteral("%1 x%2").arg(status.first).arg(status.second));
+        icon->setToolTip(battleStatusToolTip(status.first, status.second));
         icon->setStyleSheet(
             "QLabel {"
             "  background: #8f5bd1;"
@@ -1305,6 +1666,26 @@ void BattleWidget::clearStatusLayout(QHBoxLayout *layout)
     }
 }
 
+void BattleWidget::collectEnemyScoreIfDefeated(int enemyIndex)
+{
+    if (m_battleNumber >= GameBalance::Battle::bossBattleNumber()
+        || enemyIndex < 0
+        || enemyIndex >= m_enemies.size()) {
+        return;
+    }
+
+    while (m_enemyScoreCollected.size() < m_enemies.size()) {
+        m_enemyScoreCollected.append(false);
+    }
+
+    if (!m_enemies.at(enemyIndex).isDead() || m_enemyScoreCollected.at(enemyIndex)) {
+        return;
+    }
+
+    m_enemyScoreCollected[enemyIndex] = true;
+    m_pendingUsualScoreReward += currentUsualScoreRewardForEnemy(m_enemies.at(enemyIndex));
+}
+
 void BattleWidget::applyRelicsAtBattleStart()
 {
     const QList<RelicData> relics = GameState::instance().relics();
@@ -1315,6 +1696,16 @@ void BattleWidget::applyRelicsAtBattleStart()
             m_playerStrength += relic.amount;
         } else if (relic.effectType == RelicEffectType::StartCombatDraw) {
             drawCards(relic.amount);
+        }
+    }
+}
+
+void BattleWidget::applyRelicsAtTurnStart()
+{
+    const QList<RelicData> relics = GameState::instance().relics();
+    for (const RelicData &relic : relics) {
+        if (relic.effectType == RelicEffectType::TurnStartBlock) {
+            m_playerBlock += relic.amount;
         }
     }
 }
@@ -1367,6 +1758,7 @@ void BattleWidget::usePotionAt(int potionIndex, int targetEnemyIndex)
         Enemy &enemy = m_enemies[targetEnemyIndex];
         const int shownDamage = enemy.previewIncomingDamage(potion.amount);
         enemy.takeDamage(potion.amount);
+        collectEnemyScoreIfDefeated(targetEnemyIndex);
         if (targetEnemyIndex < m_enemyWidgets.size()) {
             showSlashEffect(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor());
             showDamagePopup(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor(), shownDamage);
@@ -1420,6 +1812,7 @@ void BattleWidget::playCard(int handIndex, int targetEnemyIndex)
         Enemy &enemy = m_enemies[targetEnemyIndex];
         const int shownDamage = enemy.previewIncomingDamage(damage);
         enemy.takeDamage(damage);
+        collectEnemyScoreIfDefeated(targetEnemyIndex);
         if (targetEnemyIndex < m_enemyWidgets.size()) {
             showSlashEffect(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor());
             showDamagePopup(m_enemyWidgets.at(targetEnemyIndex)->portraitAnchor(), shownDamage);
@@ -1475,8 +1868,8 @@ void BattleWidget::animateCardToPile(int handIndex, PileKind pileKind)
         return;
     }
 
-    QPushButton *sourceButton = m_handButtons.at(handIndex);
-    if (!sourceButton) {
+    QWidget *sourceWidget = m_handButtons.at(handIndex);
+    if (!sourceWidget) {
         return;
     }
 
@@ -1487,13 +1880,13 @@ void BattleWidget::animateCardToPile(int handIndex, PileKind pileKind)
         targetButton = m_exhaustPileButton;
     }
 
-    const QRect sourceRect(mapFromGlobal(sourceButton->mapToGlobal(QPoint(0, 0))), sourceButton->size());
+    const QRect sourceRect(mapFromGlobal(sourceWidget->mapToGlobal(QPoint(0, 0))), sourceWidget->size());
     const QPoint targetCenter = mapFromGlobal(targetButton->mapToGlobal(QPoint(targetButton->width() / 2,
                                                                                targetButton->height() / 2)));
     const QSize flySize(84, 110);
     const QRect targetRect(targetCenter - QPoint(flySize.width() / 2, flySize.height() / 2), flySize);
 
-    QLabel *flyingCard = new QLabel(sourceButton->text(), this);
+    QLabel *flyingCard = new QLabel(m_hand.cardAt(handIndex).buttonText(), this);
     flyingCard->setAlignment(Qt::AlignCenter);
     flyingCard->setWordWrap(true);
     flyingCard->setStyleSheet(
@@ -1761,23 +2154,40 @@ bool BattleWidget::checkBattleEnd()
     }
 
     if (allEnemiesDead()) {
+        for (int i = 0; i < m_enemies.size(); ++i) {
+            collectEnemyScoreIfDefeated(i);
+        }
+        const int defeatedEnemyCount = qMax(1, m_enemies.size());
+        const int usualScoreReward = m_pendingUsualScoreReward > 0
+                                         ? m_pendingUsualScoreReward
+                                         : currentBattleUsualScoreReward();
+        const int finalExamScore = currentFinalExamScore();
         m_battleEnded = true;
         m_playerTurn = false;
-        ++m_enemiesDefeated;
+        m_enemiesDefeated += defeatedEnemyCount;
         applyRelicsAfterBattleWin();
         m_hand.discardHand();
         rebuildHandButtons();
+        applyBattleEndMessageStyle();
 
         if (m_battleNumber >= GameBalance::Battle::bossBattleNumber()) {
             m_runFinished = true;
-            GameState::instance().recordBossDefeated();
-            m_titleLabel->setText(GameText::Battle::runClearTitle());
+            GameState::instance().recordBossDefeated(finalExamScore);
+            m_titleLabel->setText(GameText::Battle::runClearTitleFormat()
+                                      .arg(GameState::instance().totalScore()));
+            m_tipLabel->setText(GameText::Battle::finalVictoryTipFormat()
+                                    .arg(GameState::instance().finalExamScore())
+                                    .arg(GameState::instance().usualScore())
+                                    .arg(GameState::instance().totalScore()));
         } else {
             ++m_battleNumber;
-            GameState::instance().recordEnemyDefeated();
+            GameState::instance().recordEnemyDefeated(usualScoreReward,
+                                                      defeatedEnemyCount);
             m_titleLabel->setText(GameText::Battle::battleWinFormat().arg(m_enemiesDefeated));
+            m_tipLabel->setText(GameText::Battle::battleVictoryTipFormat()
+                                    .arg(usualScoreReward)
+                                    .arg(GameState::instance().usualScore()));
         }
-        m_tipLabel->setText(GameText::Battle::victoryTip());
         refreshUi();
         scheduleMapCallback(true);
         return true;
@@ -1791,6 +2201,7 @@ bool BattleWidget::checkBattleEnd()
         m_runFinished = true;
         m_hand.discardHand();
         rebuildHandButtons();
+        applyBattleEndMessageStyle();
         m_titleLabel->setText(GameText::Battle::battleFailTitle());
         m_tipLabel->setText(GameText::Battle::failTip());
         refreshUi();
@@ -1835,17 +2246,50 @@ QList<Enemy> BattleWidget::createEnemiesForBattle() const
         return enemies;
     }
 
-    const int roll = GameRandom::instance().bounded(GameBalance::Enemies::normalEnemyTypes());
-    if (roll == 0) {
-        enemies << Enemy::createCampusCultist();
-    } else if (roll == 1) {
-        enemies << Enemy::createHomeworkWorm();
-    } else if (roll == 2) {
-        enemies << Enemy::createDdlSlime()
-                << Enemy::createDdlSlime();
+    const int floor = GameState::instance().currentFloor();
+    if (floor < GameBalance::Enemies::earlyFloorLimit()) {
+        const int roll = GameRandom::instance().bounded(GameBalance::Enemies::earlyEncounterTypes());
+        if (roll == 0) {
+            enemies << Enemy::createCampusCultist();
+        } else if (roll == 1) {
+            enemies << Enemy::createDdlSlime();
+        } else if (roll == 2) {
+            enemies << Enemy::createMorningAlarm()
+                    << Enemy::createMorningAlarm();
+        } else {
+            enemies << Enemy::createClubFlyer();
+        }
+    } else if (floor < GameBalance::Enemies::middleFloorLimit()) {
+        const int roll = GameRandom::instance().bounded(GameBalance::Enemies::middleEncounterTypes());
+        if (roll == 0) {
+            enemies << Enemy::createHomeworkWorm();
+        } else if (roll == 1) {
+            enemies << Enemy::createDdlSlime()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 2) {
+            enemies << Enemy::createClubFlyer()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 3) {
+            enemies << Enemy::createTeachingSentry();
+        } else {
+            enemies << Enemy::createCampusCultist();
+        }
     } else {
-        enemies << Enemy::createDdlSlime()
-                << Enemy::createProjectNob();
+        const int roll = GameRandom::instance().bounded(GameBalance::Enemies::lateEncounterTypes());
+        if (roll == 0) {
+            enemies << Enemy::createProjectNob();
+        } else if (roll == 1) {
+            enemies << Enemy::createDdlSlime()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 2) {
+            enemies << Enemy::createClubFlyer()
+                    << Enemy::createDdlSlime();
+        } else if (roll == 3) {
+            enemies << Enemy::createTeachingSentry();
+        } else {
+            enemies << Enemy::createDdlSlime()
+                    << Enemy::createProjectNob();
+        }
     }
     return enemies;
 }
@@ -1856,6 +2300,33 @@ int BattleWidget::playerAttackDamage(const Card &card) const
         return 0;
     }
     return qMax(0, card.damage() + m_playerStrength * qMax(1, card.strengthMultiplier()));
+}
+
+int BattleWidget::currentUsualScoreRewardForEnemy(const Enemy &enemy) const
+{
+    const int baseScore = enemy.usualScoreReward();
+    if (baseScore <= 0) {
+        return 0;
+    }
+
+    const int decay = qMax(0, m_turnNumber - 1) * GameBalance::CourseGrade::enemyScoreDecayPerTurn();
+    return qMax(GameBalance::CourseGrade::enemyMinimumScore(), baseScore - decay);
+}
+
+int BattleWidget::currentBattleUsualScoreReward() const
+{
+    int reward = 0;
+    for (const Enemy &enemy : m_enemies) {
+        reward += currentUsualScoreRewardForEnemy(enemy);
+    }
+    return reward;
+}
+
+int BattleWidget::currentFinalExamScore() const
+{
+    const int decay = qMax(0, m_turnNumber - 1) * GameBalance::CourseGrade::finalExamDecayPerTurn();
+    return qMax(GameBalance::CourseGrade::finalExamMinimumScore(),
+                GameBalance::CourseGrade::finalExamStartScore() - decay);
 }
 
 void BattleWidget::showSlashEffect(QWidget *anchor)

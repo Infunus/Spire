@@ -47,6 +47,7 @@ public:
         : m_hp(0),
           m_maxHp(0),
           m_block(0),
+          m_usualScoreReward(0),
           m_strength(0),
           m_intentIndex(0),
           m_weakStacks(0),
@@ -58,13 +59,15 @@ public:
           int maxHp,
           const QString &imagePath,
           const QList<EnemyAction> &actions,
-          const QString &description = QString())
+          const QString &description = QString(),
+          int usualScoreReward = 0)
         : m_name(name),
           m_hp(maxHp),
           m_maxHp(maxHp),
           m_block(0),
           m_imagePath(imagePath),
           m_description(description),
+          m_usualScoreReward(usualScoreReward),
           m_strength(0),
           m_actions(actions),
           m_intentIndex(0),
@@ -79,6 +82,7 @@ public:
     int block() const { return m_block; }
     QString imagePath() const { return m_imagePath; }
     QString description() const { return m_description; }
+    int usualScoreReward() const { return m_usualScoreReward; }
     int intentIndex() const { return m_intentIndex; }
     bool isDead() const { return m_hp <= 0; }
     int weakStacks() const { return m_weakStacks; }
@@ -132,6 +136,28 @@ public:
                     + states.join(GameText::EnemyText::statusJoiner());
         }
         return text;
+    }
+
+    QString intentTooltip() const
+    {
+        const EnemyAction action = currentAction();
+        QString rulesText;
+        if (action.type == EnemyActionAttack) {
+            rulesText = GameText::EnemyText::attackIntentRules(effectiveAttackDamage(action.amount));
+        } else if (action.type == EnemyActionHeal) {
+            rulesText = GameText::EnemyText::healIntentRules(action.amount);
+        } else if (action.type == EnemyActionBuff) {
+            rulesText = GameText::EnemyText::buffIntentRules(action.amount);
+        } else if (action.type == EnemyActionBlock) {
+            rulesText = GameText::EnemyText::blockIntentRules(action.amount);
+        } else if (action.type == EnemyActionAttackAndBuff) {
+            rulesText = GameText::EnemyText::attackAndBuffIntentRules(effectiveAttackDamage(action.amount),
+                                                                      action.extra);
+        } else {
+            rulesText = GameText::EnemyText::attackAndBlockIntentRules(effectiveAttackDamage(action.amount),
+                                                                       action.extra);
+        }
+        return GameText::Battle::intentTooltip(intentText(), rulesText);
     }
 
     int attackPlayer()
@@ -241,7 +267,8 @@ public:
                      GameBalance::Enemies::CampusCultist::maxHp(),
                      GameText::EnemyText::campusCultistImage(),
                      actions,
-                     GameText::EnemyText::campusCultistDescription());
+                     GameText::EnemyText::campusCultistDescription(),
+                     GameBalance::CourseGrade::campusCultistScore());
     }
 
     static Enemy createProgramProject()
@@ -261,7 +288,8 @@ public:
                      GameBalance::Enemies::ProjectNob::maxHp(),
                      GameText::EnemyText::projectNobImage(),
                      actions,
-                     GameText::EnemyText::projectNobDescription());
+                     GameText::EnemyText::projectNobDescription(),
+                     GameBalance::CourseGrade::projectNobScore());
     }
 
     static Enemy createMidterm()
@@ -281,7 +309,8 @@ public:
                      GameBalance::Enemies::HomeworkWorm::maxHp(),
                      GameText::EnemyText::homeworkWormImage(),
                      actions,
-                     GameText::EnemyText::homeworkWormDescription());
+                     GameText::EnemyText::homeworkWormDescription(),
+                     GameBalance::CourseGrade::homeworkWormScore());
     }
 
     static Enemy createDdlSlime()
@@ -294,7 +323,50 @@ public:
                      GameBalance::Enemies::DdlSlime::maxHp(),
                      GameText::EnemyText::ddlSlimeImage(),
                      actions,
-                     GameText::EnemyText::ddlSlimeDescription());
+                     GameText::EnemyText::ddlSlimeDescription(),
+                     GameBalance::CourseGrade::ddlSlimeScore());
+    }
+
+    static Enemy createMorningAlarm()
+    {
+        QList<EnemyAction> actions;
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::MorningAlarm::attackA())
+                << EnemyAction(EnemyActionBuff, GameBalance::Enemies::MorningAlarm::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::MorningAlarm::attackB());
+        return Enemy(GameText::EnemyText::morningAlarmName(),
+                     GameBalance::Enemies::MorningAlarm::maxHp(),
+                     GameText::EnemyText::morningAlarmImage(),
+                     actions,
+                     GameText::EnemyText::morningAlarmDescription(),
+                     GameBalance::CourseGrade::morningAlarmScore());
+    }
+
+    static Enemy createClubFlyer()
+    {
+        QList<EnemyAction> actions;
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::ClubFlyer::attack())
+                << EnemyAction(EnemyActionBuff, GameBalance::Enemies::ClubFlyer::buff())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::ClubFlyer::attack());
+        return Enemy(GameText::EnemyText::clubFlyerName(),
+                     GameBalance::Enemies::ClubFlyer::maxHp(),
+                     GameText::EnemyText::clubFlyerImage(),
+                     actions,
+                     GameText::EnemyText::clubFlyerDescription(),
+                     GameBalance::CourseGrade::clubFlyerScore());
+    }
+
+    static Enemy createTeachingSentry()
+    {
+        QList<EnemyAction> actions;
+        actions << EnemyAction(EnemyActionAttack, GameBalance::Enemies::TeachingSentry::attack())
+                << EnemyAction(EnemyActionBlock, GameBalance::Enemies::TeachingSentry::block())
+                << EnemyAction(EnemyActionAttack, GameBalance::Enemies::TeachingSentry::attack());
+        return Enemy(GameText::EnemyText::teachingSentryName(),
+                     GameBalance::Enemies::TeachingSentry::maxHp(),
+                     GameText::EnemyText::teachingSentryImage(),
+                     actions,
+                     GameText::EnemyText::teachingSentryDescription(),
+                     GameBalance::CourseGrade::teachingSentryScore());
     }
 
     static Enemy createFinalExam()
@@ -355,6 +427,7 @@ private:
     int m_block;
     QString m_imagePath;
     QString m_description;
+    int m_usualScoreReward;
     int m_strength;
     QList<EnemyAction> m_actions;
     int m_intentIndex;
